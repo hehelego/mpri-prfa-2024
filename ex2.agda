@@ -161,3 +161,150 @@ module ARS where
       (λ { y' ySy' → let SNy' = S→SN ySy'
                          SNx  = SN R→SN
                       in SN-double-ind f x  y' SNx  SNy' })
+
+{-
+-- ### Sub Section 2.3 Combinatory Logic
+-}
+module Combinatory-Logic where
+  open Hilbert-System using (⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S) renaming (_⊢_ to _⊢'_)
+  open ARS using (SN[_] ; SN ; Closure[_] ; refl ; step ; transit)
+
+  infixl 15 _·_
+  data Term : Set where
+    S : Term
+    K : Term
+    𝕍 : ℕ → Term
+    _·_ : Term → Term → Term
+
+  -- a
+  data _⊢_~_ (Γ : Context) : Term → Formula → Set where
+    ⊢-AX : {n : ℕ} {ϕ : Formula} → Γ ! n ≔ ϕ → Γ ⊢ 𝕍 n ~ ϕ
+    ⊢-MP : {u v : Term} {ϕ ψ : Formula} → Γ ⊢ u ~ ϕ ⇒ ψ → Γ ⊢ v ~ ϕ → Γ ⊢ u · v ~ ψ
+    ⊢-K : {ϕ ψ : Formula} → Γ ⊢ K ~ ϕ ⇒ ψ ⇒ ϕ
+    ⊢-S : {ϕ ψ γ : Formula} → Γ ⊢ S ~ (ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ
+
+  variable
+    Γ : Context
+
+
+  Hilbert⇒SK : {ϕ : Formula} → Γ ⊢' ϕ → Σ (λ e → Γ ⊢ e ~ ϕ)
+  Hilbert⇒SK (⊢-AX ϕ∈Γ) = let ⟨ n , at-n ⟩ = mem→idx ϕ∈Γ
+                           in ⟨ 𝕍 n , ⊢-AX at-n ⟩
+  Hilbert⇒SK (⊢-MP ⊢'ϕ⇒ψ ⊢'ϕ) = let ⟨ u , ⊢ϕ⇒ψ ⟩ = Hilbert⇒SK ⊢'ϕ⇒ψ
+                                    ⟨ v , ⊢ϕ   ⟩ = Hilbert⇒SK ⊢'ϕ
+                                 in ⟨ u · v , ⊢-MP ⊢ϕ⇒ψ ⊢ϕ ⟩
+  Hilbert⇒SK ⊢-K = ⟨ K , ⊢-K ⟩
+  Hilbert⇒SK ⊢-S = ⟨ S , ⊢-S ⟩
+
+  SK⇒Hilbert : {ϕ : Formula} → Σ (λ e → Γ ⊢ e ~ ϕ) → Γ ⊢' ϕ
+  SK⇒Hilbert ⟨ 𝕍 n , ⊢-AX at-n ⟩ = let ϕ∈Γ = idx→mem ⟨ n , at-n ⟩
+                                    in ⊢-AX ϕ∈Γ
+  SK⇒Hilbert ⟨ u · v , ⊢-MP u:ϕ⇒ψ v:ϕ ⟩ = let ⊢ϕ⇒ψ = SK⇒Hilbert ⟨ u , u:ϕ⇒ψ ⟩
+                                              ⊢ϕ   = SK⇒Hilbert ⟨ v , v:ϕ   ⟩
+                                           in ⊢-MP ⊢ϕ⇒ψ ⊢ϕ
+  SK⇒Hilbert ⟨ K , ⊢-K ⟩ = ⊢-K
+  SK⇒Hilbert ⟨ S , ⊢-S ⟩ = ⊢-S
+
+  -- b
+  Hilbert⇔SK : {ϕ : Formula} → (Σ (λ e → Γ ⊢ e ~ ϕ)) ⇔ (Γ ⊢' ϕ)
+  Hilbert⇔SK = record { ⇒ = SK⇒Hilbert ; ⇐ = Hilbert⇒SK }
+
+  -- c
+  infix 10 _≻_
+  data _≻_ : Term → Term → Set where
+    ≻K  : {x y : Term}    → K · x · y      ≻ x
+    ≻S  : {f g x : Term}  → S · f · g · x  ≻ f · x · (g · x)
+    ≻·l : {x x' y : Term} → x ≻ x' → x · y ≻ x' · y
+    ≻·r : {x y y' : Term} → y ≻ y' → x · y ≻ x  · y'
+
+  infix 10 _≻*_
+  _≻*_ : Term → Term → Set
+  _≻*_ = Closure[ _≻_ ]
+
+  -- d
+  ≻-preserve : {x x' : Term} {ϕ : Formula} → Γ ⊢ x ~ ϕ  → x ≻ x' → Γ ⊢ x' ~ ϕ
+  ≻-preserve (⊢-MP (⊢-MP ⊢-K x:ϕ) y:ψ) ≻K = x:ϕ
+  ≻-preserve (⊢-MP (⊢-MP (⊢-MP ⊢-S f:ϕ⇒ψ⇒γ) g:ϕ⇒ψ) x:ϕ) ≻S
+    = let fx:ψ⇒γ = ⊢-MP f:ϕ⇒ψ⇒γ x:ϕ
+          gx:ψ   = ⊢-MP g:ϕ⇒ψ  x:ϕ
+       in ⊢-MP fx:ψ⇒γ gx:ψ
+  ≻-preserve (⊢-MP x:ϕ⇒ψ y:ϕ) (≻·l x≻x') = let x':ϕ⇒ψ = ≻-preserve x:ϕ⇒ψ x≻x'
+                                            in ⊢-MP x':ϕ⇒ψ y:ϕ
+  ≻-preserve (⊢-MP x:ϕ⇒ψ y:ϕ) (≻·r y≻y') = let y':ϕ = ≻-preserve y:ϕ y≻y'
+                                            in ⊢-MP x:ϕ⇒ψ y':ϕ
+
+  -- e
+  ≻*·l : {x x' y : Term} → x ≻* x' → x · y ≻* x' · y
+  ≻*·l refl = refl
+  ≻*·l (step x≻x') = step (≻·l x≻x')
+  ≻*·l (transit x≻*z z≻*x') = let xy≻*zy = ≻*·l x≻*z
+                                  zy≻*x'y = ≻*·l z≻*x'
+                               in transit xy≻*zy zy≻*x'y
+
+  -- f
+  subject-reduction : {x x' : Term} {ϕ : Formula}
+                    → Γ ⊢ x  ~ ϕ → x ≻* x' → Γ ⊢ x' ~ ϕ
+  subject-reduction x:ϕ refl = x:ϕ
+  subject-reduction x:ϕ (step x≻x') = ≻-preserve x:ϕ x≻x'
+  subject-reduction x:ϕ (transit x≻y y≻z) = let y:ϕ = subject-reduction x:ϕ x≻y
+                                                z:ϕ = subject-reduction y:ϕ y≻z
+                                             in z:ϕ
+
+  -- g
+  SN·lemma : (u v : Term) → SN[ _≻_ ] (u · v) → SN[ _≻_ ] u
+  SN·lemma S v sn = SN λ ()
+  SN·lemma K v sn = SN λ ()
+  SN·lemma (𝕍 n) v sn = SN λ ()
+  SN·lemma (u · v) w (SN ≻→SN) = SN g
+    where g : {e : Term} → u · v ≻ e → SN[ _≻_ ] e
+          g {e} ≻K = let Kevw≻ew = ≻·l ≻K
+                         sn = ≻→SN Kevw≻ew
+                      in SN·lemma e w sn
+          g {e} ≻S = let Sfgxy≻fx[gx]y = ≻·l ≻S
+                         sn = ≻→SN Sfgxy≻fx[gx]y
+                      in SN·lemma e w sn
+          g {e} (≻·l u≻u') = let uvw≻u'vw = ≻·l (≻·l u≻u')
+                                 sn = ≻→SN uvw≻u'vw
+                              in SN·lemma e w sn
+          g {e} (≻·r v≻v') = let uvw≻uv'w = ≻·l (≻·r v≻v')
+                                 sn = ≻→SN uvw≻uv'w
+                              in SN·lemma e w sn
+
+  -- h
+  neutral : Term → 𝔹
+  neutral K = False
+  neutral (K · e) = False
+  neutral S = False
+  neutral (S · e) = False
+  neutral (S · e · e') = False
+  neutral e = True
+
+  neutral· : (u v : Term) → neutral u ≡ True → neutral (u · v) ≡ True
+  neutral· (𝕍 n) v refl = refl
+  neutral· (𝕍 n · t) v refl = refl
+  neutral· (K · y · z) v refl = refl
+  neutral· (𝕍 n · y · z) v refl = refl
+  neutral· (x · y · z · w) v refl = refl
+
+
+  -- i
+  ≻-progress : (e : Term) {ϕ : Formula}
+             → [] ⊢ e ~ ϕ → Σ (e ≻_) ⊎ neutral e ≡ False
+  ≻-progress S S:ϕ = right refl
+  ≻-progress K K:ϕ = right refl
+  ≻-progress (𝕍 n) (⊢-AX ())
+  ≻-progress (u · v) (⊢-MP u:ϕ⇒ψ v:ϕ)
+    with ≻-progress u u:ϕ⇒ψ
+  ... | left ⟨ u' , u≻u' ⟩ = left ⟨ u' · v , ≻·l u≻u' ⟩
+  ... | right ¬neu-u
+    with ≻-progress v v:ϕ
+  ... | left ⟨ v' , v≻v' ⟩ = left ⟨ u · v' , ≻·r v≻v' ⟩
+  ... | right ¬neu-v = lemma u v ¬neu-u ¬neu-v
+    where
+      lemma : (u v : Term) → neutral u ≡ False → neutral v ≡ False
+            → Σ ((u · v) ≻_) ⊎ neutral (u · v) ≡ False
+      lemma S v nu nv = right refl
+      lemma K v nu nv = right refl
+      lemma (K · u) v nu nv = left ⟨ u , ≻K ⟩
+      lemma (S · v) x nuv nv = right refl
+      lemma (S · f · g) x nuv nv = left ⟨ f · x · (g · x) , ≻S ⟩
