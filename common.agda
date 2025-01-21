@@ -68,3 +68,19 @@ map f (x ∷ xs) = f x ∷ map f xs
 ∈-map : {A B : Set} {f : A → B} {z : A} {xs : List A} → z ∈ xs → f z ∈ map f xs
 ∈-map (here refl) = here refl
 ∈-map (there z∈xs) = there (∈-map z∈xs)
+
+infixr 15 _⊎_
+data _⊎_ (A B : Set) : Set where
+  left  : (x : A) → A ⊎ B
+  right : (y : B) → A ⊎ B
+
+record Σ {A : Set} (B : A → Set) : Set where
+  constructor ⟨_,_⟩
+  field
+    fst : A
+    snd : B fst
+
+infixr 15 _×_
+_×_ : Set → Set → Set
+A × B = Σ (λ (_ : A) → B)
+
