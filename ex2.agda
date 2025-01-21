@@ -84,8 +84,79 @@ module Hilbert-System where
                                          ϕ  = Minimal⇒Hilbert ⊢ϕ
                                       in ⊢-MP ϕψ ϕ
 
-
+{-
+-- ### Sub Section 2.2 Abstract reduction systems
+-}
 module ARS where
   variable
+    -- terms
     A : Set
+    -- reduction relation
     R : A → A → Set
+    -- typing relation T
+    T : A → Set
+    -- valuation relation V
+    V : A → Set
+
+  -- a
+  data SN[_] (R : A → A → Set) (x : A) : Set where
+    SN-f : ({y : A} → R x y → SN[ R ] y) → SN[ R ] x
+
+  SN-succ : {x y : A} → SN[ R ] x → R x y → SN[ R ] y
+  SN-succ (SN-f f) = f
+
+  -- b
+  data Closure[_] (R : A → A → Set) : A → A → Set where
+    refl : {x : A} → Closure[ R ] x x
+    step : {x y : A} → R x y → Closure[ R ] x y
+    transit : {x y z : A} → Closure[ R ] x y → Closure[ R ] y z → Closure[ R ] x z
+
+  -- c
+  SN-on-Closure : {x y : A} → SN[ R ] x → Closure[ R ] x y → SN[ R ] y
+  SN-on-Closure SNx refl = SNx
+  SN-on-Closure SNx (step xRy) = SN-succ SNx xRy
+  SN-on-Closure SNx (transit xRz zRy) = let SNz = SN-on-Closure SNx xRz
+                                            SNy = SN-on-Closure SNz zRy
+                                         in SNy
+
+  variable
+    preserve : {x y : A} → T x → R x y → T y
+    progress : {x : A} → T x → Σ (λ y → R x y) ⊎ V x
+
+  -- d
+  SN→WN : (preserve : {x y : A} → T x → R x y → T y)
+        → (progress : {x : A} → T x → Σ (λ (y : A) → R x y) ⊎ V x)
+        → (x : A)
+        → T x → SN[ R ] x
+        → Σ (λ (z : A) → Closure[ R ] x z × T z × V z)
+  SN→WN pres prog x Tx SNx
+    with prog Tx
+  ... | left ⟨ y , xRy ⟩
+          = let Ty  = pres Tx xRy
+                SNy = SN-succ SNx xRy
+                ⟨ z , ⟨ yR*z , ⟨ Tz , Vz ⟩ ⟩ ⟩ = SN→WN pres prog y Ty SNy
+                xR*z = transit (step xRy) yR*z
+             in ⟨ z , ⟨ xR*z , ⟨ Tz , Vz ⟩ ⟩ ⟩
+  ... | right Vx
+          = let xR*x = refl
+             in ⟨ x , ⟨ xR*x , ⟨ Tx , Vx ⟩ ⟩ ⟩
+
+  -- e
+  SN-double-ind : {A B : Set}
+                → {R : A → A → Set} {S : B → B → Set}
+                → {P : A → B → Set}
+                → ((a : A) (b : B)
+                  → ((a' : A) → R a a' → SN[ R ] a')
+                  → ((a' : A) → R a a' → P a' b)
+                  → ((b' : B) → S b b' → SN[ S ] b')
+                  → ((b' : B) → S b b' → P a b')
+                  → P a b)
+                → (x : A) (y : B)
+                → SN[ R ] x
+                → SN[ S ] y
+                → P x y
+  SN-double-ind f x y SNx SNy = f x y
+      (λ { x' xRx' → SN-succ SNx xRx' })
+      (λ { x' xRx' → let SNx' = SN-succ SNx xRx' in SN-double-ind f x' y  SNx' SNy  })
+      (λ { y' ySy' → SN-succ SNy ySy' })
+      (λ { y' ySy' → let SNy' = SN-succ SNy ySy' in SN-double-ind f x  y' SNx  SNy' })
