@@ -100,10 +100,7 @@ module ARS where
 
   -- a
   data SN[_] (R : A → A → Set) (x : A) : Set where
-    SN-f : ({y : A} → R x y → SN[ R ] y) → SN[ R ] x
-
-  SN-succ : {x y : A} → SN[ R ] x → R x y → SN[ R ] y
-  SN-succ (SN-f f) = f
+    SN : ({y : A} → R x y → SN[ R ] y) → SN[ R ] x
 
   -- b
   data Closure[_] (R : A → A → Set) : A → A → Set where
@@ -114,7 +111,7 @@ module ARS where
   -- c
   SN-on-Closure : {x y : A} → SN[ R ] x → Closure[ R ] x y → SN[ R ] y
   SN-on-Closure SNx refl = SNx
-  SN-on-Closure SNx (step xRy) = SN-succ SNx xRy
+  SN-on-Closure (SN f) (step xRy) = f xRy
   SN-on-Closure SNx (transit xRz zRy) = let SNz = SN-on-Closure SNx xRz
                                             SNy = SN-on-Closure SNz zRy
                                          in SNy
@@ -129,7 +126,7 @@ module ARS where
         → (x : A)
         → T x → SN[ R ] x
         → Σ (λ (z : A) → Closure[ R ] x z × T z × V z)
-  SN→WN pres prog x Tx (SN-f R→SN)
+  SN→WN pres prog x Tx (SN R→SN)
     with prog Tx
   ... | left ⟨ y , xRy ⟩
           = let Ty  = pres Tx xRy
@@ -155,12 +152,12 @@ module ARS where
                 → SN[ R ] x
                 → SN[ S ] y
                 → P x y
-  SN-double-ind f x y (SN-f R→SN) (SN-f S→SN) = f x y
+  SN-double-ind f x y (SN R→SN) (SN S→SN) = f x y
       (λ { x' xRx' → R→SN xRx' })
       (λ { x' xRx' → let SNx' = R→SN xRx'
-                         SNy  = SN-f S→SN
+                         SNy  = SN S→SN
                       in SN-double-ind f x' y  SNx' SNy  })
       (λ { y' ySy' → S→SN ySy' })
       (λ { y' ySy' → let SNy' = S→SN ySy'
-                         SNx  = SN-f R→SN
+                         SNx  = SN R→SN
                       in SN-double-ind f x  y' SNx  SNy' })
