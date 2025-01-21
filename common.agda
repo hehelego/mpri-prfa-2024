@@ -84,3 +84,18 @@ infixr 15 _×_
 _×_ : Set → Set → Set
 A × B = Σ (λ (_ : A) → B)
 
+infix 10 _!_≔_
+data _!_≔_ {A : Set} : List A → ℕ → A → Set where
+  at-Z : {x : A} {xs : List A} → (x ∷ xs) ! Z ≔ x
+  at-S : {x y : A} {xs : List A} {n : ℕ} → xs ! n ≔ x → (y ∷ xs) ! (S n) ≔ x
+
+mem→idx : {A : Set} {x : A} {xs : List A} → x ∈ xs → Σ (λ n → xs ! n ≔ x)
+mem→idx (here refl) = ⟨ Z , at-Z ⟩
+mem→idx {A} {x} {y ∷ xs} (there x∈xs) = let ⟨ n , at-n ⟩ = mem→idx x∈xs
+                                         in ⟨ S n , at-S at-n ⟩
+
+idx→mem : {A : Set} {x : A} {xs : List A} → Σ (λ n → xs ! n ≔ x) → x ∈ xs
+idx→mem ⟨ Z , at-Z ⟩ = here refl
+idx→mem ⟨ S n , at-S at-n ⟩ = let x∈xs = idx→mem ⟨ n , at-n ⟩
+                               in there x∈xs
+
