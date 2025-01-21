@@ -129,11 +129,11 @@ module ARS where
         → (x : A)
         → T x → SN[ R ] x
         → Σ (λ (z : A) → Closure[ R ] x z × T z × V z)
-  SN→WN pres prog x Tx SNx
+  SN→WN pres prog x Tx (SN-f R→SN)
     with prog Tx
   ... | left ⟨ y , xRy ⟩
           = let Ty  = pres Tx xRy
-                SNy = SN-succ SNx xRy
+                SNy = R→SN xRy
                 ⟨ z , ⟨ yR*z , ⟨ Tz , Vz ⟩ ⟩ ⟩ = SN→WN pres prog y Ty SNy
                 xR*z = transit (step xRy) yR*z
              in ⟨ z , ⟨ xR*z , ⟨ Tz , Vz ⟩ ⟩ ⟩
@@ -155,8 +155,12 @@ module ARS where
                 → SN[ R ] x
                 → SN[ S ] y
                 → P x y
-  SN-double-ind f x y SNx SNy = f x y
-      (λ { x' xRx' → SN-succ SNx xRx' })
-      (λ { x' xRx' → let SNx' = SN-succ SNx xRx' in SN-double-ind f x' y  SNx' SNy  })
-      (λ { y' ySy' → SN-succ SNy ySy' })
-      (λ { y' ySy' → let SNy' = SN-succ SNy ySy' in SN-double-ind f x  y' SNx  SNy' })
+  SN-double-ind f x y (SN-f R→SN) (SN-f S→SN) = f x y
+      (λ { x' xRx' → R→SN xRx' })
+      (λ { x' xRx' → let SNx' = R→SN xRx'
+                         SNy  = SN-f S→SN
+                      in SN-double-ind f x' y  SNx' SNy  })
+      (λ { y' ySy' → S→SN ySy' })
+      (λ { y' ySy' → let SNy' = S→SN ySy'
+                         SNx  = SN-f R→SN
+                      in SN-double-ind f x  y' SNx  SNy' })
