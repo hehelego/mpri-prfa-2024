@@ -99,3 +99,6 @@ idx→mem ⟨ Z , at-Z ⟩ = here refl
 idx→mem ⟨ S n , at-S at-n ⟩ = let x∈xs = idx→mem ⟨ n , at-n ⟩
                                in there x∈xs
 
+data 𝔹 : Set where
+  True  : 𝔹
+  False : 𝔹
