@@ -308,3 +308,78 @@ module Combinatory-Logic where
       lemma (K · u) v nu nv = left ⟨ u , ≻K ⟩
       lemma (S · v) x nuv nv = right refl
       lemma (S · f · g) x nuv nv = left ⟨ f · x · (g · x) , ≻S ⟩
+
+{-
+-- ### Sub Section 2.4 Normalisation
+-}
+module Normalisation where
+  open ARS using (SN[_] ; SN ; Closure[_] ; refl ; step ; transit ; SN-on-Closure)
+  open Combinatory-Logic using (Term ; S ; K ; 𝕍 ; _·_ ; _≻_ ; ≻K ; ≻S ; ≻·l ; ≻·r ;
+                                _≻*_ ; ≻*·l ;
+                                neutral ; neutral· ;
+                                SN·lemma)
+
+  SN≻ : Term → Set
+  SN≻ = SN[ _≻_ ]
+
+  infix 3 ⊨_~_
+  ⊨_~_ : Term → Formula → Set
+  ⊨ e ~ ⊥     = SN≻ e
+  ⊨ e ~ var n = SN≻ e
+  ⊨ e ~ ϕ ⇒ ψ = {x : Term} → ⊨ x ~ ϕ → ⊨ e · x ~ ψ
+
+  -- theorem 1.1
+  sem-SN : {e : Term} (ϕ : Formula)
+      → ⊨ e ~ ϕ
+      → SN≻ e
+  -- theorem 1.2
+  sem-preserve : {e : Term} (ϕ : Formula)
+            → ⊨ e ~ ϕ
+            → ({e' : Term} → e ≻* e' → ⊨ e' ~ ϕ)
+  -- theorem 1.3
+  sem-neutral : {e : Term} (ϕ : Formula) (neu-e : neutral e ≡ True)
+           → ({e' : Term} → e ≻ e' → ⊨ e' ~ ϕ)
+           → ⊨ e ~ ϕ
+
+  -- corollary of theorem 1.3: a variable term is always semantically well-typed
+  -- because it is neutral and cannot be further reduced.
+  ⊨𝕍n:ϕ : {n : ℕ} (ϕ : Formula) → ⊨ 𝕍 n ~ ϕ
+  ⊨𝕍n:ϕ ϕ = sem-neutral ϕ refl λ { () }
+
+  -- proof of theorem 1.1
+  sem-SN     ⊥       sem = sem
+  sem-SN     (var x) sem = sem
+  sem-SN {e} (ϕ ⇒ ψ) ⊨e:ϕ⇒ψ = 
+    let v        = 𝕍 Z
+        ⊨v:ϕ     = ⊨𝕍n:ϕ ϕ
+        ⊨e·v:ψ   = ⊨e:ϕ⇒ψ ⊨v:ϕ
+        SN≻e·v   = sem-SN {e · v} ψ ⊨e·v:ψ
+        SN≻e     = SN·lemma e v SN≻e·v
+     in SN≻e
+
+
+  -- proof of theorem 1.2
+  sem-preserve     ⊥       sem e≻*e' = SN-on-Closure sem e≻*e'
+  sem-preserve     (var x) sem e≻*e' = SN-on-Closure sem e≻*e'
+  sem-preserve {e} (ϕ ⇒ ψ) ⊨e:ϕ⇒ψ {e'} e≻*e' = ⊨e':ϕ⇒ψ
+    where
+      ⊨e':ϕ⇒ψ : ⊨ e' ~ ϕ ⇒ ψ
+      ⊨e':ϕ⇒ψ {x} ⊨x:ϕ = let ⊨e·x:ψ    = ⊨e:ϕ⇒ψ ⊨x:ϕ
+                             e·x≻*e'·x = ≻*·l e≻*e'
+                          in sem-preserve {e · x} ψ ⊨e·x:ψ {e' · x} e·x≻*e'·x
+
+  -- proof of theorem 1.3
+  sem-neutral     ⊥       neu-e ≻→⊨ = SN λ { e≻e' → sem-SN ⊥       (≻→⊨ e≻e') }
+  sem-neutral     (var x) neu-e ≻→⊨ = SN λ { e≻e' → sem-SN (var x) (≻→⊨ e≻e') }
+  sem-neutral {e} (ϕ ⇒ ψ) neu-e ≻→⊨ = λ { ⊨x:ϕ → SN→⊨ϕ⇒ψ (sem-SN ϕ ⊨x:ϕ) ⊨x:ϕ }
+    where
+      SN→⊨ϕ⇒ψ : {x : Term} → SN≻ x → ⊨ x ~ ϕ → ⊨ e · x ~ ψ
+      SN→⊨ϕ⇒ψ {x} (SN SN≻x) ⊨x:ϕ =
+        let neu-e·x = neutral· e x neu-e
+            ⊨e·x:ψ  = sem-neutral {e · x} ψ neu-e·x
+                        λ { (≻·l e≻e') → (≻→⊨ e≻e') ⊨x:ϕ
+                          ; (≻·r x≻x') →
+                            let ⊨x':ϕ = sem-preserve ϕ ⊨x:ϕ (step x≻x')
+                                SN≻x' = SN≻x x≻x'
+                             in SN→⊨ϕ⇒ψ SN≻x' ⊨x':ϕ }
+         in ⊨e·x:ψ
