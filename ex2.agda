@@ -313,7 +313,9 @@ module Combinatory-Logic where
 -- ### Sub Section 2.4 Normalisation
 -}
 module Normalisation where
-  open ARS using (SN[_] ; SN ; Closure[_] ; refl ; step ; transit ; SN-on-Closure)
+  open ARS using (SN[_] ; SN ;
+                  Closure[_] ; refl ; step ; transit ;
+                  SN-on-Closure ; SN-double-ind)
   open Combinatory-Logic using (Term ; S ; K ; 𝕍 ; _·_ ; _≻_ ; ≻K ; ≻S ; ≻·l ; ≻·r ;
                                 _≻*_ ; ≻*·l ;
                                 neutral ; neutral· ;
@@ -383,3 +385,54 @@ module Normalisation where
                                 SN≻x' = SN≻x x≻x'
                              in SN→⊨ϕ⇒ψ SN≻x' ⊨x':ϕ }
          in ⊨e·x:ψ
+
+  -- lemma 2: semantic type of K
+  ⊨K : (ϕ ψ : Formula) → ⊨ K ~ ϕ ⇒ ψ ⇒ ϕ
+  ⊨K ϕ ψ {x} ⊨x:ϕ {y} ⊨y:ψ =
+    let SN≻x     = sem-SN ϕ ⊨x:ϕ
+        SN≻y     = sem-SN ψ ⊨y:ψ
+     in helper ⊨x:ϕ SN≻x ⊨y:ψ SN≻y
+    where
+      helper : {x y : Term}
+             → ⊨ x ~ ϕ → SN≻ x
+             → ⊨ y ~ ψ → SN≻ y
+             → ⊨ K · x · y ~ ϕ
+      helper {x} {y} ⊨x:ϕ (SN SN≻x) ⊨y:ψ (SN SN≻y) =
+        sem-neutral {K · x · y} ϕ refl
+          λ { ≻K → ⊨x:ϕ
+            ; (≻·l (≻·r x≻x')) → let ⊨x':ϕ = sem-preserve ϕ ⊨x:ϕ (step x≻x')
+                                     SN≻x' = SN≻x x≻x'
+                                  in helper ⊨x':ϕ SN≻x' ⊨y:ψ (SN SN≻y)
+            ; (≻·r y≻y') →       let ⊨y':ψ = sem-preserve ψ ⊨y:ψ (step y≻y')
+                                     SN≻y' = SN≻y y≻y'
+                                  in helper ⊨x:ϕ (SN SN≻x) ⊨y':ψ SN≻y' }
+
+  -- lemma 3: semantic type of S
+  -- S f g x => f x (g x)
+  ⊨S : (ϕ ψ γ : Formula) → ⊨ S ~ (ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ
+  ⊨S ϕ ψ γ {f} ⊨f:ϕψγ {g} ⊨g:ϕψ {x} ⊨x:ϕ =
+    let SN≻f     = sem-SN (ϕ ⇒ ψ ⇒ γ) ⊨f:ϕψγ
+        SN≻g     = sem-SN (ϕ ⇒ ψ)     ⊨g:ϕψ
+        SN≻x     = sem-SN  ϕ          ⊨x:ϕ
+     in helper ⊨f:ϕψγ SN≻f ⊨g:ϕψ SN≻g ⊨x:ϕ SN≻x
+    where
+      helper : {f g x : Term}
+             → ⊨ f ~ ϕ ⇒ ψ ⇒ γ → SN≻ f
+             → ⊨ g ~ ϕ ⇒ ψ     → SN≻ g
+             → ⊨ x ~ ϕ         → SN≻ x
+             → ⊨ S · f · g · x ~ γ
+      helper {f} {g} {x} ⊨f:ϕψγ (SN SN≻f) ⊨g:ϕψ (SN SN≻g) ⊨x:ϕ (SN SN≻x) =
+        sem-neutral {S · f · g · x} γ refl
+          λ { ≻S → ⊨f:ϕψγ ⊨x:ϕ (⊨g:ϕψ ⊨x:ϕ)
+            ; (≻·l (≻·l (≻·r f≻f'))) →
+                    let ⊨f':ϕψγ = sem-preserve (ϕ ⇒ ψ ⇒ γ) ⊨f:ϕψγ (step f≻f')
+                        SN≻f'   = SN≻f f≻f'
+                     in helper ⊨f':ϕψγ SN≻f' ⊨g:ϕψ (SN SN≻g) ⊨x:ϕ (SN SN≻x)
+            ; (≻·l (≻·r g≻g')) →
+                    let ⊨g':ϕψ = sem-preserve (ϕ ⇒ ψ) ⊨g:ϕψ (step g≻g')
+                        SN≻g'  = SN≻g g≻g'
+                     in helper ⊨f:ϕψγ (SN SN≻f) ⊨g':ϕψ SN≻g' ⊨x:ϕ (SN SN≻x)
+            ; (≻·r x≻x') →
+                    let ⊨x':ϕ = sem-preserve ϕ ⊨x:ϕ (step x≻x')
+                        SN≻x' = SN≻x x≻x'
+                     in helper ⊨f:ϕψγ (SN SN≻f) ⊨g:ϕψ (SN SN≻g) ⊨x':ϕ SN≻x' }
