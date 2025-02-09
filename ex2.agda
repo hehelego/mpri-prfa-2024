@@ -313,13 +313,16 @@ module Combinatory-Logic where
 -- ### Sub Section 2.4 Normalisation
 -}
 module Normalisation where
-  open ARS using (SN[_] ; SN ;
+  open ARS using (SN[_] ; SN ; SN→WN ;
                   Closure[_] ; refl ; step ; transit ;
                   SN-on-Closure ; SN-double-ind)
   open Combinatory-Logic using (Term ; S ; K ; 𝕍 ; _·_ ; _≻_ ; ≻K ; ≻S ; ≻·l ; ≻·r ;
                                 _≻*_ ; ≻*·l ;
+                                _⊢_~_ ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
                                 neutral ; neutral· ;
+                                ≻-preserve ; ≻-progress ;
                                 SN·lemma)
+
 
   SN≻ : Term → Set
   SN≻ = SN[ _≻_ ]
@@ -436,3 +439,39 @@ module Normalisation where
                     let ⊨x':ϕ = sem-preserve ϕ ⊨x:ϕ (step x≻x')
                         SN≻x' = SN≻x x≻x'
                      in helper ⊨f:ϕψγ (SN SN≻f) ⊨g:ϕψ (SN SN≻g) ⊨x':ϕ SN≻x' }
+
+  -- theorem 4: syntactically well-typed implies semantically well-typed
+  ⊢→⊨ : {Γ : Context} {e : Term} {ϕ : Formula}
+      → ({n : ℕ} {ϕ : Formula} → Γ ! n ≔ ϕ → ⊨ 𝕍 n ~ ϕ)
+      → Γ ⊢ e ~ ϕ
+      → ⊨ e ~ ϕ
+  ⊢→⊨ {Γ} {𝕍 n} {ϕ}                             f (⊢-AX x) = f x
+  ⊢→⊨ {Γ} {e}   {ϕ}                             f (⊢-MP ⊢x:ϕ⇒ψ ⊢y:ϕ)
+      = let ⊨x:ϕ⇒ψ = ⊢→⊨ f ⊢x:ϕ⇒ψ
+            ⊨y:ϕ   = ⊢→⊨ f ⊢y:ϕ
+         in ⊨x:ϕ⇒ψ ⊨y:ϕ
+  ⊢→⊨ {Γ} {K}   {ϕ ⇒ ψ ⇒ ϕ}                     f ⊢-K = ⊨K ϕ ψ
+  ⊢→⊨ {Γ} {S}   {(ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ} f ⊢-S = ⊨S ϕ ψ γ
+
+  -- lemma 5: well-typed term under the empty context is strongly normalising.
+  ⊢→SN : {e : Term} {ϕ : Formula}
+      → [] ⊢ e ~ ϕ
+      → SN≻ e
+  ⊢→SN {e} {ϕ} ⊢e:ϕ = sem-SN {e} ϕ (⊢→⊨ (λ ()) ⊢e:ϕ)
+
+  -- lemma 6: normalisation is type-preserving and results in an non-neutral term
+  ⊢→WN : {e : Term} {ϕ : Formula}
+       → [] ⊢ e ~ ϕ
+       → Σ (λ e' → [] ⊢ e' ~ ϕ × neutral e' ≡ False)
+  ⊢→WN {e} {ϕ} ⊢e:ϕ
+    = let SN≻e     = ⊢→SN ⊢e:ϕ
+          WN≻e     = SN→WN {T = [] ⊢_~ ϕ}
+                           {R = _≻_}
+                           {V = λ v → neutral v ≡ False}
+                           ≻-preserve (λ {x} → ≻-progress x {ϕ})
+                           e ⊢e:ϕ SN≻e
+          ⟨ e' , e≻*e'-⊢e':ϕ-¬neu ⟩ = WN≻e
+       in ⟨ e' , xyz→yz e≻*e'-⊢e':ϕ-¬neu ⟩
+    where
+      xyz→yz : {A B C : Set} → A × B × C → B × C
+      xyz→yz ⟨ x , ⟨ y , z ⟩ ⟩ = ⟨ y , z ⟩
