@@ -6,6 +6,7 @@
 open import common
 open import ex1
 open ex1.ND-minimal using (⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢m_)
+open ex1.ND-classical using (⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢c_)
 
 _ : ℕ
 _ = Z
@@ -475,3 +476,32 @@ module Normalisation where
     where
       xyz→yz : {A B C : Set} → A × B × C → B × C
       xyz→yz ⟨ x , ⟨ y , z ⟩ ⟩ = ⟨ y , z ⟩
+
+{-
+-- ### Sub Section 2.5 Consistency
+-}
+module Consistency where
+  open ND-minimal using (Equi-Consitency)
+  open Hilbert-System using (Minimal⇒Hilbert)
+  open Combinatory-Logic using (Term ; S ; K ; 𝕍 ; _·_ ;
+                                _⊢_~_ ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
+                                Hilbert⇒SK )
+  open Normalisation using (⊢→WN)
+
+  ⊥-not-inhabitable : {e : Term} → ¬ ([] ⊢ e ~ ⊥)
+  ⊥-not-inhabitable ⊢e:⊥ with ⊢→WN ⊢e:⊥
+  ... | ⟨ S · e1 , ⟨ ⊢-MP () ⊢e1:A , ¬neutral-e' ⟩ ⟩
+  ... | ⟨ K · e1 , ⟨ ⊢-MP () ⊢e1:A , ¬neutral-e' ⟩ ⟩
+  ... | ⟨ S · e1 · e2 , ⟨ ⊢-MP (⊢-MP () ⊢e1:A) ⊢e2:B , ¬neutral-e' ⟩ ⟩
+
+  nd-consistent : ¬ ([] ⊢m ⊥)
+  nd-consistent ⊢m⊥ = let ⊢h⊥           = Minimal⇒Hilbert ⊢m⊥
+                          ⟨ e , ⊢e:⊥ ⟩  = Hilbert⇒SK ⊢h⊥
+                       in ⊥-not-inhabitable ⊢e:⊥
+
+  ndc-consistent : ¬ ([] ⊢c ⊥)
+  ndc-consistent ⊢c⊥ = let ndc→nd        = _⇔_.⇐ Equi-Consitency
+                           ⊢m⊥           = ndc→nd ⊢c⊥
+                           ⊢h⊥           = Minimal⇒Hilbert ⊢m⊥
+                           ⟨ e , ⊢e:⊥ ⟩  = Hilbert⇒SK ⊢h⊥
+                        in ⊥-not-inhabitable ⊢e:⊥
