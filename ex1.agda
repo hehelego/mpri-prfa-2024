@@ -44,10 +44,6 @@ module ND-classical where
 
   -- b.1
   example-1 : {Γ : Context} (ϕ : Formula) → Γ ⊢ ϕ ⇒ ϕ
-  example-1 (ϕ ⇒ ψ) = let ⊢ϕ⇒ψ = ⊢-ax (there (here refl))
-                          ⊢ϕ   = ⊢-ax (here refl)
-                          ⊢ψ   = ⊢-elim ⊢ϕ⇒ψ ⊢ϕ
-                       in ⊢-intr (⊢-intr ⊢ψ)
   example-1 ϕ = ⊢-intr (⊢-ax (here refl))
 
   -- b.2
