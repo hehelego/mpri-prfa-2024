@@ -78,14 +78,6 @@ module ND-classical where
                                in ⊢-pbc ~ϕ,Δ⊢⊥
 
 
--- data OccurAt {A : Set} : (n : ℕ) (z : A) (xs : List A) → Set where
---   AtHead : {z : A} → OccurAt Z z (z ∷ [])
---   InTail : {n : ℕ} {z x : A} {xs : List A} → OccurAt n z xs → OccurAt (S n) z (x ∷ xs)
---
--- pos : {A : Set} {z : A} {xs : List A} (n : ℕ) {occ : OccurAt n z xs} → z ∈ xs
--- pos Z {AtHead} = here refl
--- pos (S n) {InTail occ} = there (pos n {occ})
-
 {-
 -- ### Sub Section 1.2 minimal logic
 -}
