@@ -16,10 +16,10 @@ data Formula : Set where
   _⇒_ : Formula → Formula → Formula
 
 -- 1.1.d
-infixr 30 _⇒ᵍ_
-data Ground : Formula → Set where
-  ⊥ᵍ   : Ground ⊥
-  _⇒ᵍ_ : {ϕ ψ : Formula} → Ground ϕ → Ground ψ → Ground (ϕ ⇒ ψ)
+Ground : Formula → Set
+Ground (var x) = Empty
+Ground ⊥ = Unit
+Ground (ϕ ⇒ ψ) = Ground ϕ × Ground ψ
 
 infixr 50 ~_
 ~_ : Formula → Formula
@@ -168,21 +168,21 @@ module ND-minimal where
                                in ⊢-elim ⊢'ϕ⇒ψ ⊢'ϕ
   Friedman (⊢-pbc ~ϕ⊢) = let f[~ϕ]⊢ = Friedman ~ϕ⊢ in PBC-Friedman f[~ϕ]⊢
 
-  friedman-of-ground : {ϕ : Formula} → Ground ϕ → friedman[ ⊥ ] ϕ ≡ ϕ
-  friedman-of-ground ⊥ᵍ = refl
-  friedman-of-ground (ϕ ⇒ᵍ ψ) = let ϕ' = friedman-of-ground ϕ
-                                    ψ' = friedman-of-ground ψ
-                                  in cong2 _⇒_  ϕ' ψ'
+  friedman-of-ground : (ϕ : Formula) → Ground ϕ → friedman[ ⊥ ] ϕ ≡ ϕ
+  friedman-of-ground ⊥ Gϕ = refl
+  friedman-of-ground (ϕ ⇒ ψ) ⟨ Gϕ , Gψ ⟩ = let ϕ' = friedman-of-ground ϕ Gϕ
+                                               ψ' = friedman-of-ground ψ Gψ
+                                            in cong2 _⇒_  ϕ' ψ'
 
   -- g
-  GroundTruth : {ϕ : Formula} → Ground ϕ → ([] ⊢ ϕ) ⇔ ([] ⊢c ϕ)
-  GroundTruth ϕᵍ = record { ⇒ = implication ; ⇐ = rev ϕᵍ }
+  GroundTruth : (ϕ : Formula) → Ground ϕ → ([] ⊢ ϕ) ⇔ ([] ⊢c ϕ)
+  GroundTruth ϕ ϕᵍ = record { ⇒ = implication ; ⇐ = converse ϕ ϕᵍ }
     where
-      rev : {ϕ : Formula} → Ground ϕ → [] ⊢c ϕ → [] ⊢ ϕ
-      rev ϕᵍ ⊢'ϕ = let ⊢f[⊥]ϕ  = Friedman {ξ = ⊥} ⊢'ϕ
-                    in subst ([] ⊢_) ⊢f[⊥]ϕ (friedman-of-ground ϕᵍ)
+      converse : (ϕ : Formula) → Ground ϕ → [] ⊢c ϕ → [] ⊢ ϕ
+      converse ϕ ϕᵍ ⊢'ϕ = let ⊢f[⊥]ϕ  = Friedman {ξ = ⊥} ⊢'ϕ
+                           in subst ([] ⊢_) ⊢f[⊥]ϕ (friedman-of-ground ϕ ϕᵍ)
 
   -- h
   Equi-Consitency : ([] ⊢ ⊥) ⇔ ([] ⊢c ⊥)
-  Equi-Consitency = GroundTruth ⊥ᵍ
+  Equi-Consitency = GroundTruth ⊥ unit
 

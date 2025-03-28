@@ -50,11 +50,14 @@ _⊆_ {A} xs ys = {z : A} → z ∈ xs → z ∈ ys
 ∷-subset {A} {z} xs⊆ys (here eq) = here eq
 ∷-subset {A} {z} xs⊆ys (there mem) = there (xs⊆ys mem)
 
-data ∅ : Set where
+data Empty : Set where
+
+record Unit : Set where
+  constructor unit
 
 infix 4 ¬_
 ¬_ : Set → Set
-¬ A = A → ∅
+¬ A = A → Empty
 
 record _⇔_ (A B : Set) : Set where
   field
@@ -99,6 +102,6 @@ idx→mem ⟨ Z , at-Z ⟩ = here refl
 idx→mem ⟨ S n , at-S at-n ⟩ = let x∈xs = idx→mem ⟨ n , at-n ⟩
                                in there x∈xs
 
-data 𝔹 : Set where
-  True  : 𝔹
-  False : 𝔹
+data Bool : Set where
+  True  : Bool
+  False : Bool

@@ -272,7 +272,7 @@ module Combinatory-Logic where
                               in SN·lemma e w sn
 
   -- h
-  neutral : Term → 𝔹
+  neutral : Term → Bool
   neutral K = False
   neutral (K · e) = False
   neutral S = False
