@@ -5,8 +5,8 @@
 
 open import common
 open import ex1
-open ex1.ND-minimal using (⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢m_)
-open ex1.ND-classical using (⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢c_)
+open ex1.ND-minimal using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢m_)
+open ex1.ND-classical using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢c_)
 
 _ : ℕ
 _ = Z
@@ -19,6 +19,8 @@ module Hilbert-System where
   -- Hilbert System Derivability
   -- The context never changes so we make it a parameter not an index.
   data _⊢_ (Γ : Context) : Formula → Set where
+    -- prove true in any context
+    ⊢-TRUE : Γ ⊢ ⊤
     -- using assumption: the identity axiom
     ⊢-AX : {ϕ : Formula} → ϕ ∈ Γ → Γ ⊢ ϕ
     -- modus ponens
@@ -31,6 +33,7 @@ module Hilbert-System where
 
   -- b
   Hilbert⇒Minimal : {Γ : Context} {ϕ : Formula} → Γ ⊢ ϕ → Γ ⊢m ϕ
+  Hilbert⇒Minimal ⊢-TRUE = ⊢-true
   Hilbert⇒Minimal (⊢-AX x) = ⊢-ax x
   Hilbert⇒Minimal (⊢-MP ϕ⇒ψ ϕ) = let ⊢mϕ⇒ψ = Hilbert⇒Minimal ϕ⇒ψ
                                      ⊢mϕ   = Hilbert⇒Minimal ϕ
@@ -68,6 +71,7 @@ module Hilbert-System where
 
   -- d
   deduction-theorem : {Γ : Context} {ϕ ψ : Formula} → ϕ ∷ Γ ⊢ ψ → Γ ⊢ ϕ ⇒ ψ
+  deduction-theorem ⊢-TRUE = fact1 (⊢-TRUE)
   deduction-theorem (⊢-AX (here refl)) = fact3
   deduction-theorem (⊢-AX (there x)) = fact1 (⊢-AX x)
   deduction-theorem (⊢-MP ϕ⊢γ⇒ψ ϕ⊢γ) = let ϕγψ = deduction-theorem ϕ⊢γ⇒ψ
@@ -79,6 +83,7 @@ module Hilbert-System where
 
   -- e
   Minimal⇒Hilbert : {Γ : Context} {ϕ : Formula} → Γ ⊢m ϕ → Γ ⊢ ϕ
+  Minimal⇒Hilbert ⊢-true = ⊢-TRUE
   Minimal⇒Hilbert (⊢-ax x) = ⊢-AX x
   Minimal⇒Hilbert (⊢-intr ⊢ϕ) = deduction-theorem (Minimal⇒Hilbert ⊢ϕ)
   Minimal⇒Hilbert (⊢-elim ⊢ϕ⇒ψ ⊢ϕ) = let ϕψ = Minimal⇒Hilbert ⊢ϕ⇒ψ
@@ -167,11 +172,12 @@ module ARS where
 -- ### Sub Section 2.3 Combinatory Logic
 -}
 module Combinatory-Logic where
-  open Hilbert-System using (⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S) renaming (_⊢_ to _⊢'_)
+  open Hilbert-System using (⊢-TRUE ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S) renaming (_⊢_ to _⊢'_)
   open ARS using (SN[_] ; SN ; Closure[_] ; refl ; step ; transit)
 
   infixl 15 _·_
   data Term : Set where
+    O : Term
     S : Term
     K : Term
     𝕍 : ℕ → Term
@@ -179,6 +185,7 @@ module Combinatory-Logic where
 
   -- a
   data _⊢_~_ (Γ : Context) : Term → Formula → Set where
+    ⊢-O : Γ ⊢ O ~ ⊤
     ⊢-AX : {n : ℕ} {ϕ : Formula} → Γ ! n ≔ ϕ → Γ ⊢ 𝕍 n ~ ϕ
     ⊢-MP : {u v : Term} {ϕ ψ : Formula} → Γ ⊢ u ~ ϕ ⇒ ψ → Γ ⊢ v ~ ϕ → Γ ⊢ u · v ~ ψ
     ⊢-K : {ϕ ψ : Formula} → Γ ⊢ K ~ ϕ ⇒ ψ ⇒ ϕ
@@ -189,6 +196,7 @@ module Combinatory-Logic where
 
 
   Hilbert⇒SK : {ϕ : Formula} → Γ ⊢' ϕ → Σ (λ e → Γ ⊢ e ~ ϕ)
+  Hilbert⇒SK ⊢-TRUE = ⟨ O , ⊢-O ⟩
   Hilbert⇒SK (⊢-AX ϕ∈Γ) = let ⟨ n , at-n ⟩ = mem→idx ϕ∈Γ
                            in ⟨ 𝕍 n , ⊢-AX at-n ⟩
   Hilbert⇒SK (⊢-MP ⊢'ϕ⇒ψ ⊢'ϕ) = let ⟨ u , ⊢ϕ⇒ψ ⟩ = Hilbert⇒SK ⊢'ϕ⇒ψ
@@ -198,6 +206,7 @@ module Combinatory-Logic where
   Hilbert⇒SK ⊢-S = ⟨ S , ⊢-S ⟩
 
   SK⇒Hilbert : {ϕ : Formula} → Σ (λ e → Γ ⊢ e ~ ϕ) → Γ ⊢' ϕ
+  SK⇒Hilbert ⟨ O , ⊢-O ⟩ = ⊢-TRUE
   SK⇒Hilbert ⟨ 𝕍 n , ⊢-AX at-n ⟩ = let ϕ∈Γ = idx→mem ⟨ n , at-n ⟩
                                     in ⊢-AX ϕ∈Γ
   SK⇒Hilbert ⟨ u · v , ⊢-MP u:ϕ⇒ψ v:ϕ ⟩ = let ⊢ϕ⇒ψ = SK⇒Hilbert ⟨ u , u:ϕ⇒ψ ⟩
@@ -253,6 +262,7 @@ module Combinatory-Logic where
 
   -- g
   SN·lemma : (u v : Term) → SN[ _≻_ ] (u · v) → SN[ _≻_ ] u
+  SN·lemma O v sn = SN λ ()
   SN·lemma S v sn = SN λ ()
   SN·lemma K v sn = SN λ ()
   SN·lemma (𝕍 n) v sn = SN λ ()
@@ -271,26 +281,35 @@ module Combinatory-Logic where
                                  sn = ≻→SN uvw≻uv'w
                               in SN·lemma e w sn
 
+  headO : Term → Bool
+  headO O = False
+  headO (e · _) = headO e
+  headO _ = True
+
   -- h
   neutral : Term → Bool
+  neutral O = False
   neutral K = False
   neutral (K · e) = False
   neutral S = False
   neutral (S · e) = False
   neutral (S · e · e') = False
-  neutral e = True
+  neutral e = headO e
 
   neutral· : (u v : Term) → neutral u ≡ True → neutral (u · v) ≡ True
   neutral· (𝕍 n) v refl = refl
   neutral· (𝕍 n · t) v refl = refl
   neutral· (K · y · z) v refl = refl
   neutral· (𝕍 n · y · z) v refl = refl
-  neutral· (x · y · z · w) v refl = refl
+  neutral· (e · e₃ · e₂ · e₁) v neu with headO e
+  neutral· (e · e₃ · e₂ · e₁) v refl | True = refl
+  neutral· (e · e₃ · e₂ · e₁) v ()   | False
 
 
   -- i
   ≻-progress : (e : Term) {ϕ : Formula}
              → [] ⊢ e ~ ϕ → Σ (e ≻_) ⊎ neutral e ≡ False
+  ≻-progress O ⊢-O = right refl
   ≻-progress S S:ϕ = right refl
   ≻-progress K K:ϕ = right refl
   ≻-progress (𝕍 n) (⊢-AX ())
@@ -304,11 +323,17 @@ module Combinatory-Logic where
     where
       lemma : (u v : Term) → neutral u ≡ False → neutral v ≡ False
             → Σ ((u · v) ≻_) ⊎ neutral (u · v) ≡ False
+      lemma O v nu nv = right refl
       lemma S v nu nv = right refl
       lemma K v nu nv = right refl
+      lemma (O · u) v nu nv = right refl
       lemma (K · u) v nu nv = left ⟨ u , ≻K ⟩
       lemma (S · v) x nuv nv = right refl
+      lemma (O · x · y) v nu nv = right refl
       lemma (S · f · g) x nuv nv = left ⟨ f · x · (g · x) , ≻S ⟩
+      lemma (e · x · y · z) v nu nv with headO e
+      lemma (e · x · y · z) v () nv | True
+      lemma (e · x · y · z) v nu nv | False = right refl
 
 {-
 -- ### Sub Section 2.4 Normalisation
@@ -317,9 +342,9 @@ module Normalisation where
   open ARS using (SN[_] ; SN ; SN→WN ;
                   Closure[_] ; refl ; step ; transit ;
                   SN-on-Closure ; SN-double-ind)
-  open Combinatory-Logic using (Term ; S ; K ; 𝕍 ; _·_ ; _≻_ ; ≻K ; ≻S ; ≻·l ; ≻·r ;
+  open Combinatory-Logic using (Term ; O ; S ; K ; 𝕍 ; _·_ ; _≻_ ; ≻K ; ≻S ; ≻·l ; ≻·r ;
                                 _≻*_ ; ≻*·l ;
-                                _⊢_~_ ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
+                                _⊢_~_ ; ⊢-O ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
                                 neutral ; neutral· ;
                                 ≻-preserve ; ≻-progress ;
                                 SN·lemma)
@@ -330,6 +355,7 @@ module Normalisation where
 
   infix 3 ⊨_~_
   ⊨_~_ : Term → Formula → Set
+  ⊨ e ~ ⊤     = SN≻ e
   ⊨ e ~ ⊥     = SN≻ e
   ⊨ e ~ var n = SN≻ e
   ⊨ e ~ ϕ ⇒ ψ = {x : Term} → ⊨ x ~ ϕ → ⊨ e · x ~ ψ
@@ -353,6 +379,7 @@ module Normalisation where
   ⊨𝕍n:ϕ ϕ = sem-neutral ϕ refl λ { () }
 
   -- proof of theorem 1.1
+  sem-SN     ⊤       sem = sem
   sem-SN     ⊥       sem = sem
   sem-SN     (var x) sem = sem
   sem-SN {e} (ϕ ⇒ ψ) ⊨e:ϕ⇒ψ = 
@@ -365,6 +392,7 @@ module Normalisation where
 
 
   -- proof of theorem 1.2
+  sem-preserve     ⊤       sem e≻*e' = SN-on-Closure sem e≻*e'
   sem-preserve     ⊥       sem e≻*e' = SN-on-Closure sem e≻*e'
   sem-preserve     (var x) sem e≻*e' = SN-on-Closure sem e≻*e'
   sem-preserve {e} (ϕ ⇒ ψ) ⊨e:ϕ⇒ψ {e'} e≻*e' = ⊨e':ϕ⇒ψ
@@ -375,6 +403,7 @@ module Normalisation where
                           in sem-preserve {e · x} ψ ⊨e·x:ψ {e' · x} e·x≻*e'·x
 
   -- proof of theorem 1.3
+  sem-neutral     ⊤       neu-e ≻→⊨ = SN λ { e≻e' → sem-SN ⊤       (≻→⊨ e≻e') }
   sem-neutral     ⊥       neu-e ≻→⊨ = SN λ { e≻e' → sem-SN ⊥       (≻→⊨ e≻e') }
   sem-neutral     (var x) neu-e ≻→⊨ = SN λ { e≻e' → sem-SN (var x) (≻→⊨ e≻e') }
   sem-neutral {e} (ϕ ⇒ ψ) neu-e ≻→⊨ = λ { ⊨x:ϕ → SN→⊨ϕ⇒ψ (sem-SN ϕ ⊨x:ϕ) ⊨x:ϕ }
@@ -441,6 +470,11 @@ module Normalisation where
                         SN≻x' = SN≻x x≻x'
                      in helper ⊨f:ϕψγ (SN SN≻f) ⊨g:ϕψ (SN SN≻g) ⊨x':ϕ SN≻x' }
 
+  -- semantically well-typed property for the O combinator
+  -- O does not reduce
+  ⊨O : ⊨ O ~ ⊤
+  ⊨O = SN λ ()
+
   -- theorem 4: syntactically well-typed implies semantically well-typed
   ⊢→⊨ : {Γ : Context} {e : Term} {ϕ : Formula}
       → ({n : ℕ} {ϕ : Formula} → Γ ! n ≔ ϕ → ⊨ 𝕍 n ~ ϕ)
@@ -451,6 +485,7 @@ module Normalisation where
       = let ⊨x:ϕ⇒ψ = ⊢→⊨ f ⊢x:ϕ⇒ψ
             ⊨y:ϕ   = ⊢→⊨ f ⊢y:ϕ
          in ⊨x:ϕ⇒ψ ⊨y:ϕ
+  ⊢→⊨ {Γ} {O}   {⊤}                             f ⊢-O = ⊨O
   ⊢→⊨ {Γ} {K}   {ϕ ⇒ ψ ⇒ ϕ}                     f ⊢-K = ⊨K ϕ ψ
   ⊢→⊨ {Γ} {S}   {(ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ} f ⊢-S = ⊨S ϕ ψ γ
 
@@ -483,16 +518,34 @@ module Normalisation where
 module Consistency where
   open ND-minimal using (Equi-Consitency)
   open Hilbert-System using (Minimal⇒Hilbert)
-  open Combinatory-Logic using (Term ; S ; K ; 𝕍 ; _·_ ;
+  open Combinatory-Logic using (Term ; O ; S ; K ; 𝕍 ; _·_ ;
+                                headO ;
                                 _⊢_~_ ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
                                 Hilbert⇒SK )
   open Normalisation using (⊢→WN)
+
+  O·-not-typeable : {ϕ : Formula} (u v : Term) → headO u ≡ False → ¬ ([] ⊢ u · v ~ ϕ)
+  O·-not-typeable O v head (⊢-MP () ⊢e:A)
+  O·-not-typeable (x · y) v head (⊢-MP ⊢xy:A→ϕ ⊢v:A) = O·-not-typeable x y head ⊢xy:A→ϕ
+
+  case-with-equation : (b : Bool) → b ≡ True ⊎ b ≡ False
+  case-with-equation True = left refl
+  case-with-equation False = right refl
+
+  bool-contradiction : {b : Bool} → b ≡ True → b ≡ False → Empty
+  bool-contradiction {.True} refl ()
 
   ⊥-not-inhabitable : {e : Term} → ¬ ([] ⊢ e ~ ⊥)
   ⊥-not-inhabitable ⊢e:⊥ with ⊢→WN ⊢e:⊥
   ... | ⟨ S · e1 , ⟨ ⊢-MP () ⊢e1:A , ¬neutral-e' ⟩ ⟩
   ... | ⟨ K · e1 , ⟨ ⊢-MP () ⊢e1:A , ¬neutral-e' ⟩ ⟩
   ... | ⟨ S · e1 · e2 , ⟨ ⊢-MP (⊢-MP () ⊢e1:A) ⊢e2:B , ¬neutral-e' ⟩ ⟩
+  ... | ⟨ O · e1 · e2 , ⟨ ⊢-MP (⊢-MP () ⊢e1:A) ⊢e2:B , ¬neutral-e' ⟩ ⟩
+  ... | ⟨ u · e1 · e2 · e3 , ⟨ ⊢-MP (⊢-MP (⊢-MP ⊢u:ABC ⊢e1:A) ⊢e2:B) ⊢e3:C , ¬neutral-e' ⟩ ⟩
+    with case-with-equation (headO u)
+  ... | left   headO = bool-contradiction headO ¬neutral-e'
+  ... | right ¬headO = O·-not-typeable u e1 ¬headO (⊢-MP ⊢u:ABC ⊢e1:A)
+
 
   nd-consistent : ¬ ([] ⊢m ⊥)
   nd-consistent ⊢m⊥ = let ⊢h⊥           = Minimal⇒Hilbert ⊢m⊥

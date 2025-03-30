@@ -12,12 +12,14 @@ open import common
 infixr 30 _⇒_
 data Formula : Set where
   var : ℕ → Formula
+  ⊤ : Formula
   ⊥ : Formula
   _⇒_ : Formula → Formula → Formula
 
 -- 1.1.d
 Ground : Formula → Set
 Ground (var x) = Empty
+Ground ⊤ = Unit
 Ground ⊥ = Unit
 Ground (ϕ ⇒ ψ) = Ground ϕ × Ground ψ
 
@@ -33,6 +35,8 @@ module ND-classical where
   infix 3 _⊢_
   -- A sequent of classical logic natural deduction
   data _⊢_ : Context → Formula → Set where
+    -- prove true in any context
+    ⊢-true : {Γ : Context} → Γ ⊢ ⊤
     -- assumption
     ⊢-ax : {Γ : Context} {ϕ : Formula} → ϕ ∈ Γ → Γ ⊢ ϕ
     -- implication introduction
@@ -68,6 +72,7 @@ module ND-classical where
 
   -- c
   weaken : {Γ Δ : Context} {ϕ : Formula} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
+  weaken Γ⊆Δ ⊢-true = ⊢-true
   weaken Γ⊆Δ (⊢-ax ϕ∈Γ) = ⊢-ax (Γ⊆Δ ϕ∈Γ)
   weaken Γ⊆Δ (⊢-intr ϕ,Γ⊢ψ) = let ϕ,Γ⊆ϕ,Δ = ∷-subset Γ⊆Δ in ⊢-intr (weaken ϕ,Γ⊆ϕ,Δ ϕ,Γ⊢ψ)
   weaken Γ⊆Δ (⊢-elim Γ⊢ϕ⇒ψ Γ⊢ϕ) = let Δ⊢ϕ⇒ψ = weaken Γ⊆Δ Γ⊢ϕ⇒ψ
@@ -86,6 +91,8 @@ module ND-minimal where
   infix 3 _⊢_
   -- A sequent of classical logic natural deduction
   data _⊢_ : Context → Formula → Set where
+    -- prove true in any context
+    ⊢-true : {Γ : Context} → Γ ⊢ ⊤
     -- assumption
     ⊢-ax : {Γ : Context} {ϕ : Formula} → ϕ ∈ Γ → Γ ⊢ ϕ
     -- implication introduction
@@ -93,10 +100,11 @@ module ND-minimal where
     -- implication elimination
     ⊢-elim : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ϕ → Γ ⊢ ψ
 
-  open ND-classical using (⊢-ax ; ⊢-intr ; ⊢-elim ; ⊢-pbc) renaming (_⊢_ to _⊢c_)
+  open ND-classical using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim ; ⊢-pbc) renaming (_⊢_ to _⊢c_)
 
   -- b
   weaken : {Γ Δ : Context} {ϕ : Formula} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
+  weaken Γ⊆Δ ⊢-true = ⊢-true
   weaken Γ⊆Δ (⊢-ax ϕ∈Γ) = ⊢-ax (Γ⊆Δ ϕ∈Γ)
   weaken Γ⊆Δ (⊢-intr ϕ,Γ⊢ψ) = let ϕ,Γ⊆ϕ,Δ = ∷-subset Γ⊆Δ in ⊢-intr (weaken ϕ,Γ⊆ϕ,Δ ϕ,Γ⊢ψ)
   weaken Γ⊆Δ (⊢-elim Γ⊢ϕ⇒ψ Γ⊢ϕ) = let Δ⊢ϕ⇒ψ = weaken Γ⊆Δ Γ⊢ϕ⇒ψ
@@ -105,6 +113,7 @@ module ND-minimal where
 
   -- c
   implication : {Γ : Context} {ϕ : Formula} → Γ ⊢ ϕ → Γ ⊢c ϕ
+  implication ⊢-true = ⊢-true
   implication (⊢-ax x) = ⊢-ax x
   implication (⊢-intr ϕ,Γ⊢ψ) = let ϕ,Γ⊢'ψ = implication ϕ,Γ⊢ψ in ⊢-intr ϕ,Γ⊢'ψ
   implication (⊢-elim Γ⊢ϕ⇒ψ Γ⊢ϕ) = let Γ⊢'ϕ⇒ψ = implication Γ⊢ϕ⇒ψ
@@ -114,6 +123,7 @@ module ND-minimal where
   -- d
   friedman[_] : Formula → Formula → Formula
   friedman[ ξ ] (var x) = ((var x) ⇒ ξ) ⇒ ξ
+  friedman[ ξ ] ⊤ = ⊤
   friedman[ ξ ] ⊥ = ξ
   friedman[ ξ ] (ϕ ⇒ ψ) = (friedman[ ξ ] ϕ) ⇒ (friedman[ ξ ] ψ)
 
@@ -126,6 +136,7 @@ module ND-minimal where
                              s1 = ⊢-intr s2
                              s0 = ⊢-intr s1
                           in s0
+  DNE-Friedman ⊤ = ⊢-intr ⊢-true
   DNE-Friedman ⊥ = let ⊢~~ξ = ⊢-ax (here refl)
                        ⊢~ξ  = ⊢-intr (⊢-ax (here refl))
                        ⊢ξ   = ⊢-elim ⊢~~ξ ⊢~ξ
@@ -149,6 +160,7 @@ module ND-minimal where
 
   -- f
   Friedman : {Γ : Context} {ϕ ξ : Formula} → Γ ⊢c ϕ → (map friedman[ ξ ] Γ) ⊢ friedman[ ξ ] ϕ
+  Friedman ⊢-true = ⊢-true
   Friedman (⊢-ax ϕ∈Γ) = ⊢-ax (∈-map ϕ∈Γ)
   Friedman (⊢-intr ⊢ϕ) = ⊢-intr (Friedman ⊢ϕ)
   Friedman (⊢-elim ⊢ϕ⇒ψ ⊢ϕ) = let ⊢'ϕ⇒ψ = Friedman ⊢ϕ⇒ψ
@@ -157,6 +169,8 @@ module ND-minimal where
   Friedman (⊢-pbc ~ϕ⊢) = let f[~ϕ]⊢ = Friedman ~ϕ⊢ in PBC-Friedman f[~ϕ]⊢
 
   friedman-of-ground : (ϕ : Formula) → Ground ϕ → friedman[ ⊥ ] ϕ ≡ ϕ
+  friedman-of-ground (var x) ()
+  friedman-of-ground ⊤ Gϕ = refl
   friedman-of-ground ⊥ Gϕ = refl
   friedman-of-ground (ϕ ⇒ ψ) ⟨ Gϕ , Gψ ⟩ = let ϕ' = friedman-of-ground ϕ Gϕ
                                                ψ' = friedman-of-ground ψ Gψ
