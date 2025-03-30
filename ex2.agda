@@ -5,8 +5,8 @@
 
 open import common
 open import ex1
-open ex1.ND-minimal using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢m_)
-open ex1.ND-classical using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim) renaming (_⊢_ to _⊢c_)
+open ex1.ND-minimal using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim ; ⊢-conj ; ⊢-proj0 ; ⊢-proj1) renaming (_⊢_ to _⊢m_)
+open ex1.ND-classical using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim ; ⊢-conj ; ⊢-proj0 ; ⊢-proj1) renaming (_⊢_ to _⊢c_)
 
 _ : ℕ
 _ = Z
@@ -29,15 +29,21 @@ module Hilbert-System where
     ⊢-K : {ϕ ψ : Formula} → Γ ⊢ ϕ ⇒ ψ ⇒ ϕ
     -- the S combinator
     ⊢-S : {ϕ ψ γ : Formula} → Γ ⊢ (ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ
+    -- conjunction introduction
+    ⊢-CONJ : {ϕ ψ : Formula} → Γ ⊢ ϕ ⇒ ψ ⇒ ϕ /\ ψ
+    -- conjunction elimination left/right
+    ⊢-PROJ0 : {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ ⇒ ϕ
+    ⊢-PROJ1 : {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ ⇒ ψ
+
 
 
   -- b
   Hilbert⇒Minimal : {Γ : Context} {ϕ : Formula} → Γ ⊢ ϕ → Γ ⊢m ϕ
   Hilbert⇒Minimal ⊢-TRUE = ⊢-true
   Hilbert⇒Minimal (⊢-AX x) = ⊢-ax x
-  Hilbert⇒Minimal (⊢-MP ϕ⇒ψ ϕ) = let ⊢mϕ⇒ψ = Hilbert⇒Minimal ϕ⇒ψ
-                                     ⊢mϕ   = Hilbert⇒Minimal ϕ
-                                    in ⊢-elim ⊢mϕ⇒ψ ⊢mϕ
+  Hilbert⇒Minimal (⊢-MP ϕ⇒ψ ϕ) = let ⊢ϕ⇒ψ = Hilbert⇒Minimal ϕ⇒ψ
+                                     ⊢ϕ   = Hilbert⇒Minimal ϕ
+                                  in ⊢-elim ⊢ϕ⇒ψ ⊢ϕ
   Hilbert⇒Minimal ⊢-K = let at = ⊢-ax (there (here refl))
                          in ⊢-intr (⊢-intr at)
   Hilbert⇒Minimal ⊢-S = let ϕ     = ⊢-ax               (here refl)
@@ -47,8 +53,14 @@ module Hilbert-System where
                             ψ⇒γ   = ⊢-elim ϕ⇒ψ⇒γ ϕ
                             γ     = ⊢-elim ψ⇒γ   ψ
                          in ⊢-intr (⊢-intr (⊢-intr γ))
-
-
+  Hilbert⇒Minimal ⊢-CONJ = let ψϕ⊢ϕ = ⊢-ax (there (here refl))
+                               ψϕ⊢ψ = ⊢-ax (here refl)
+                               ψϕ⊢ϕ·ψ = ⊢-conj ψϕ⊢ϕ ψϕ⊢ψ
+                            in ⊢-intr (⊢-intr ψϕ⊢ϕ·ψ)
+  Hilbert⇒Minimal ⊢-PROJ0 = let ϕ·ψ⊢ϕ = ⊢-proj0 (⊢-ax (here refl))
+                             in ⊢-intr ϕ·ψ⊢ϕ
+  Hilbert⇒Minimal ⊢-PROJ1 = let ϕ·ψ⊢ϕ = ⊢-proj1 (⊢-ax (here refl))
+                             in ⊢-intr ϕ·ψ⊢ϕ
   -- c
   fact1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ψ ⇒ ϕ
   fact1 ϕ = let ϕ⇒ψ⇒ϕ = ⊢-K
@@ -80,6 +92,10 @@ module Hilbert-System where
                                         in ϕψ
   deduction-theorem ⊢-K = fact1 ⊢-K
   deduction-theorem ⊢-S = fact1 ⊢-S
+  deduction-theorem ⊢-CONJ = fact1 ⊢-CONJ
+  deduction-theorem ⊢-PROJ0 = fact1 ⊢-PROJ0
+  deduction-theorem ⊢-PROJ1 = fact1 ⊢-PROJ1
+
 
   -- e
   Minimal⇒Hilbert : {Γ : Context} {ϕ : Formula} → Γ ⊢m ϕ → Γ ⊢ ϕ
@@ -89,6 +105,15 @@ module Hilbert-System where
   Minimal⇒Hilbert (⊢-elim ⊢ϕ⇒ψ ⊢ϕ) = let ϕψ = Minimal⇒Hilbert ⊢ϕ⇒ψ
                                          ϕ  = Minimal⇒Hilbert ⊢ϕ
                                       in ⊢-MP ϕψ ϕ
+  Minimal⇒Hilbert (⊢-conj ⊢ϕ ⊢ψ) = let ϕ = Minimal⇒Hilbert ⊢ϕ
+                                       ψ = Minimal⇒Hilbert ⊢ψ
+                                    in ⊢-MP (⊢-MP ⊢-CONJ ϕ) ψ
+  Minimal⇒Hilbert (⊢-proj0 ⊢ϕ·ψ) = let ϕ·ψ = Minimal⇒Hilbert ⊢ϕ·ψ
+                                    in ⊢-MP ⊢-PROJ0 ϕ·ψ
+  Minimal⇒Hilbert (⊢-proj1 ⊢ϕ·ψ) = let ϕ·ψ = Minimal⇒Hilbert ⊢ϕ·ψ
+                                    in ⊢-MP ⊢-PROJ1 ϕ·ψ
+
+
 
 {-
 -- ### Sub Section 2.2 Abstract reduction systems
@@ -172,7 +197,11 @@ module ARS where
 -- ### Sub Section 2.3 Combinatory Logic
 -}
 module Combinatory-Logic where
-  open Hilbert-System using (⊢-TRUE ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S) renaming (_⊢_ to _⊢'_)
+  open Hilbert-System
+    using (⊢-TRUE ; ⊢-AX ; ⊢-MP ;
+           ⊢-K ; ⊢-S ;
+           ⊢-CONJ ; ⊢-PROJ0 ; ⊢-PROJ1)
+    renaming (_⊢_ to _⊢'_)
   open ARS using (SN[_] ; SN ; Closure[_] ; refl ; step ; transit)
 
   infixl 15 _·_
@@ -180,6 +209,9 @@ module Combinatory-Logic where
     O : Term
     S : Term
     K : Term
+    Pair : Term
+    Proj0 : Term
+    Proj1 : Term
     𝕍 : ℕ → Term
     _·_ : Term → Term → Term
 
@@ -190,6 +222,9 @@ module Combinatory-Logic where
     ⊢-MP : {u v : Term} {ϕ ψ : Formula} → Γ ⊢ u ~ ϕ ⇒ ψ → Γ ⊢ v ~ ϕ → Γ ⊢ u · v ~ ψ
     ⊢-K : {ϕ ψ : Formula} → Γ ⊢ K ~ ϕ ⇒ ψ ⇒ ϕ
     ⊢-S : {ϕ ψ γ : Formula} → Γ ⊢ S ~ (ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ
+    ⊢-Pair : {ϕ ψ : Formula} → Γ ⊢ Pair ~ ϕ ⇒ ψ ⇒ (ϕ /\ ψ)
+    ⊢-Proj0 : {ϕ ψ : Formula} → Γ ⊢ Proj0 ~ (ϕ /\ ψ) ⇒ ϕ
+    ⊢-Proj1 : {ϕ ψ : Formula} → Γ ⊢ Proj1 ~ (ϕ /\ ψ) ⇒ ψ
 
   variable
     Γ : Context
@@ -204,6 +239,10 @@ module Combinatory-Logic where
                                  in ⟨ u · v , ⊢-MP ⊢ϕ⇒ψ ⊢ϕ ⟩
   Hilbert⇒SK ⊢-K = ⟨ K , ⊢-K ⟩
   Hilbert⇒SK ⊢-S = ⟨ S , ⊢-S ⟩
+  Hilbert⇒SK ⊢-CONJ = ⟨ Pair , ⊢-Pair ⟩
+  Hilbert⇒SK ⊢-PROJ0 = ⟨ Proj0 , ⊢-Proj0 ⟩
+  Hilbert⇒SK ⊢-PROJ1 = ⟨ Proj1 , ⊢-Proj1 ⟩
+
 
   SK⇒Hilbert : {ϕ : Formula} → Σ (λ e → Γ ⊢ e ~ ϕ) → Γ ⊢' ϕ
   SK⇒Hilbert ⟨ O , ⊢-O ⟩ = ⊢-TRUE
@@ -214,6 +253,9 @@ module Combinatory-Logic where
                                            in ⊢-MP ⊢ϕ⇒ψ ⊢ϕ
   SK⇒Hilbert ⟨ K , ⊢-K ⟩ = ⊢-K
   SK⇒Hilbert ⟨ S , ⊢-S ⟩ = ⊢-S
+  SK⇒Hilbert ⟨ Pair , ⊢-Pair ⟩ = ⊢-CONJ
+  SK⇒Hilbert ⟨ Proj0 , ⊢-Proj0 ⟩ = ⊢-PROJ0
+  SK⇒Hilbert ⟨ Proj1 , ⊢-Proj1 ⟩ = ⊢-PROJ1
 
   -- b
   Hilbert⇔SK : {ϕ : Formula} → (Σ (λ e → Γ ⊢ e ~ ϕ)) ⇔ (Γ ⊢' ϕ)
@@ -224,8 +266,11 @@ module Combinatory-Logic where
   data _≻_ : Term → Term → Set where
     ≻K  : {x y : Term}    → K · x · y      ≻ x
     ≻S  : {f g x : Term}  → S · f · g · x  ≻ f · x · (g · x)
-    ≻·l : {x x' y : Term} → x ≻ x' → x · y ≻ x' · y
-    ≻·r : {x y y' : Term} → y ≻ y' → x · y ≻ x  · y'
+    ≻·l : {x' x y : Term} → x ≻ x' → x · y ≻ x' · y
+    ≻·r : {y' x y : Term} → y ≻ y' → x · y ≻ x  · y'
+    ≻Proj0 : {x y : Term} → Proj0 · (Pair · x · y) ≻ x
+    ≻Proj1 : {x y : Term} → Proj1 · (Pair · x · y) ≻ y
+
 
   infix 10 _≻*_
   _≻*_ : Term → Term → Set
@@ -242,6 +287,9 @@ module Combinatory-Logic where
                                             in ⊢-MP x':ϕ⇒ψ y:ϕ
   ≻-preserve (⊢-MP x:ϕ⇒ψ y:ϕ) (≻·r y≻y') = let y':ϕ = ≻-preserve y:ϕ y≻y'
                                             in ⊢-MP x:ϕ⇒ψ y':ϕ
+  ≻-preserve (⊢-MP ⊢-Proj0 (⊢-MP (⊢-MP ⊢-Pair x:ϕ) y:ψ)) ≻Proj0 = x:ϕ
+  ≻-preserve (⊢-MP ⊢-Proj1 (⊢-MP (⊢-MP ⊢-Pair x:ϕ) y:ψ)) ≻Proj1 = y:ψ
+
 
   -- e
   ≻*·l : {x x' y : Term} → x ≻* x' → x · y ≻* x' · y
@@ -250,6 +298,14 @@ module Combinatory-Logic where
   ≻*·l (transit x≻*z z≻*x') = let xy≻*zy = ≻*·l x≻*z
                                   zy≻*x'y = ≻*·l z≻*x'
                                in transit xy≻*zy zy≻*x'y
+
+
+  ≻*·r : {x y y' : Term} → y ≻* y' → x · y ≻* x · y'
+  ≻*·r refl = refl
+  ≻*·r (step y≻y') = step (≻·r y≻y')
+  ≻*·r (transit y≻*z z≻*y') = let xy≻*xz  = ≻*·r y≻*z
+                                  xz≻*xy' = ≻*·r z≻*y'
+                               in transit xy≻*xz xz≻*xy'
 
   -- f
   subject-reduction : {x x' : Term} {ϕ : Formula}
@@ -262,78 +318,134 @@ module Combinatory-Logic where
 
   -- g
   SN·lemma : (u v : Term) → SN[ _≻_ ] (u · v) → SN[ _≻_ ] u
-  SN·lemma O v sn = SN λ ()
-  SN·lemma S v sn = SN λ ()
-  SN·lemma K v sn = SN λ ()
+  SN·lemma O     v sn = SN λ ()
+  SN·lemma S     v sn = SN λ ()
+  SN·lemma K     v sn = SN λ ()
+  SN·lemma Pair  v sn = SN λ ()
+  SN·lemma Proj0 v sn = SN λ ()
+  SN·lemma Proj1 v sn = SN λ ()
   SN·lemma (𝕍 n) v sn = SN λ ()
-  SN·lemma (u · v) w (SN ≻→SN) = SN g
-    where g : {e : Term} → u · v ≻ e → SN[ _≻_ ] e
-          g {e} ≻K = let Kevw≻ew = ≻·l ≻K
-                         sn = ≻→SN Kevw≻ew
-                      in SN·lemma e w sn
-          g {e} ≻S = let Sfgxy≻fx[gx]y = ≻·l ≻S
-                         sn = ≻→SN Sfgxy≻fx[gx]y
-                      in SN·lemma e w sn
-          g {e} (≻·l u≻u') = let uvw≻u'vw = ≻·l (≻·l u≻u')
-                                 sn = ≻→SN uvw≻u'vw
-                              in SN·lemma e w sn
-          g {e} (≻·r v≻v') = let uvw≻uv'w = ≻·l (≻·r v≻v')
-                                 sn = ≻→SN uvw≻uv'w
-                              in SN·lemma e w sn
+  SN·lemma (u · v) w (SN ≻→SN) = SN helper
+    where
+      helper : {e : Term} → u · v ≻ e → SN[ _≻_ ] e
+      helper {e} red-uv = let red-uvw = ≻·l red-uv
+                              sn = ≻→SN red-uvw
+                           in SN·lemma e w sn
+
+  -- a similar version of SN·lemma
+  SN·lemma' : (u v : Term) → SN[ _≻_ ] (u · v) → SN[ _≻_ ] v
+  SN·lemma' u O sn = SN λ ()
+  SN·lemma' u S sn = SN λ ()
+  SN·lemma' u K sn = SN λ ()
+  SN·lemma' u Pair sn = SN λ ()
+  SN·lemma' u Proj0 sn = SN λ ()
+  SN·lemma' u Proj1 sn = SN λ ()
+  SN·lemma' u (𝕍 x) sn = SN λ ()
+  SN·lemma' u (v · w) (SN ≻→SN) = SN helper
+    where
+      helper : {e : Term} → v · w ≻ e → SN[ _≻_ ] e
+      helper {e} red-uv = let red-uvw = ≻·r red-uv
+                              sn = ≻→SN red-uvw
+                           in SN·lemma' u e sn
+
+
 
   headO : Term → Bool
   headO O = False
   headO (e · _) = headO e
   headO _ = True
 
+  O·-not-typeable : {ϕ ψ : Formula} (e : Term) → headO e ≡ False → ¬ ([] ⊢ e ~ ϕ ⇒ ψ)
+  O·-not-typeable (u · v) ¬headO (⊢-MP u:A⇒ϕ⇒ψ v:A) = O·-not-typeable u ¬headO u:A⇒ϕ⇒ψ
+
   -- h
   neutral : Term → Bool
-  neutral O = False
-  neutral K = False
-  neutral (K · e) = False
-  neutral S = False
-  neutral (S · e) = False
-  neutral (S · e · e') = False
-  neutral e = headO e
+  neutral O              = False
+  neutral K              = False
+  neutral (K · e)        = False
+  neutral S              = False
+  neutral (S · e)        = False
+  neutral (S · e · e')   = False
+  neutral Pair           = False
+  neutral Proj0          = False
+  neutral Proj1          = False
+  neutral (Pair · x)     = False
+  neutral (Pair · x · y) = False
+  neutral e              = headO e
+
+  neutral→headO : (x y z w : Term) → neutral (x · y · z · w) ≡ False → headO x ≡ False
+  neutral→headO x _ _ _ neu with headO x
+  neutral→headO x _ _ _ neu | False = refl
 
   neutral· : (u v : Term) → neutral u ≡ True → neutral (u · v) ≡ True
-  neutral· (𝕍 n) v refl = refl
-  neutral· (𝕍 n · t) v refl = refl
-  neutral· (K · y · z) v refl = refl
-  neutral· (𝕍 n · y · z) v refl = refl
-  neutral· (e · e₃ · e₂ · e₁) v neu with headO e
-  neutral· (e · e₃ · e₂ · e₁) v refl | True = refl
-  neutral· (e · e₃ · e₂ · e₁) v ()   | False
+  neutral· (𝕍 n) v refl           = refl
+  neutral· (𝕍 n · t) v refl       = refl
+  neutral· (K · y · z) v refl     = refl
+  neutral· (𝕍 n · y · z) v refl   = refl
+  neutral· (Proj0 · p) v refl     = refl
+  neutral· (Proj1 · p) v refl     = refl
+  neutral· (Proj0 · p · u) v refl = refl
+  neutral· (Proj1 · p · u) v refl = refl
+  neutral· (x · y · z · w) v neu with headO x
+  neutral· (x · y · z · w) v refl | True = refl
+  neutral· (x · y · z · w) v ()   | False
+
+
+  -- a term of a conjunction type is a pair
+  neutral-conjunction-is-pair : {e : Term} {ϕ ψ : Formula}
+                 → neutral e ≡ False
+                 → [] ⊢ e ~ ϕ /\ ψ
+                 → Σ (λ x → Σ (λ y → e ≡ (Pair · x · y)))
+  neutral-conjunction-is-pair {e · x · y · z} neu (⊢-MP (⊢-MP (⊢-MP e:A x:t1) y:t2) z:t3)
+    = let headO-e = neutral→headO e x y z neu
+       in absurd (O·-not-typeable e headO-e e:A)
+  neutral-conjunction-is-pair {Pair · x · y} neu (⊢-MP (⊢-MP ⊢-Pair x:ϕ) y:ψ) = ⟨ x , ⟨ y , refl ⟩ ⟩
 
 
   -- i
   ≻-progress : (e : Term) {ϕ : Formula}
              → [] ⊢ e ~ ϕ → Σ (e ≻_) ⊎ neutral e ≡ False
-  ≻-progress O ⊢-O = right refl
-  ≻-progress S S:ϕ = right refl
-  ≻-progress K K:ϕ = right refl
   ≻-progress (𝕍 n) (⊢-AX ())
+  ≻-progress O     ⊢-O     = right refl
+  ≻-progress S     ⊢-S     = right refl
+  ≻-progress K     ⊢-K     = right refl
+  ≻-progress Pair  ⊢-Pair  = right refl
+  ≻-progress Proj0 ⊢-Proj0 = right refl
+  ≻-progress Proj1 ⊢-Proj1 = right refl
   ≻-progress (u · v) (⊢-MP u:ϕ⇒ψ v:ϕ)
     with ≻-progress u u:ϕ⇒ψ
   ... | left ⟨ u' , u≻u' ⟩ = left ⟨ u' · v , ≻·l u≻u' ⟩
   ... | right ¬neu-u
     with ≻-progress v v:ϕ
   ... | left ⟨ v' , v≻v' ⟩ = left ⟨ u · v' , ≻·r v≻v' ⟩
-  ... | right ¬neu-v = lemma u v ¬neu-u ¬neu-v
+  ... | right ¬neu-v = lemma u v u:ϕ⇒ψ v:ϕ ¬neu-u ¬neu-v
     where
-      lemma : (u v : Term) → neutral u ≡ False → neutral v ≡ False
+
+      lemma : {ϕ ψ : Formula} (u v : Term)
+            → [] ⊢ u ~ ϕ ⇒ ψ
+            → [] ⊢ v ~ ϕ
+            → neutral u ≡ False
+            → neutral v ≡ False
             → Σ ((u · v) ≻_) ⊎ neutral (u · v) ≡ False
-      lemma O v nu nv = right refl
-      lemma S v nu nv = right refl
-      lemma K v nu nv = right refl
-      lemma (O · u) v nu nv = right refl
-      lemma (K · u) v nu nv = left ⟨ u , ≻K ⟩
-      lemma (S · v) x nuv nv = right refl
-      lemma (O · x · y) v nu nv = right refl
-      lemma (S · f · g) x nuv nv = left ⟨ f · x · (g · x) , ≻S ⟩
-      lemma (e · x · y · z) v nu nv with headO e
-      lemma (e · x · y · z) v () nv | True
-      lemma (e · x · y · z) v nu nv | False = right refl
+      lemma O _ _ _ _ _ = right refl
+      lemma S _ _ _ _ _ = right refl
+      lemma K _ _ _ _ _ = right refl
+      lemma Pair _ _ _ _ _  = right refl
+      lemma (O · u) _ _ _ _ _ = right refl
+      lemma (K · u) _ _ _ _ _ = left ⟨ u , ≻K ⟩
+      lemma (S · v) _ _ _ _ _ = right refl
+      lemma (O · x · y) _ _ _ _ _  = right refl
+      lemma (S · f · g) x _ _ _ _ = left ⟨ f · x · (g · x) , ≻S ⟩
+      lemma Proj0 p ⊢-Proj0 p:ϕ·ψ refl np with neutral-conjunction-is-pair np p:ϕ·ψ
+      ... | ⟨ x , ⟨ y , refl ⟩ ⟩ = left ⟨ x , ≻Proj0 ⟩
+      lemma Proj1 p ⊢-Proj1 p:ϕ·ψ refl np with neutral-conjunction-is-pair np p:ϕ·ψ
+      ... | ⟨ x , ⟨ y , refl ⟩ ⟩ = left ⟨ y , ≻Proj1 ⟩
+      lemma (Pair · x) y (⊢-MP ⊢-Pair x:ϕ) y:ψ refl ny = right refl
+      lemma (Pair · x · y) v (⊢-MP (⊢-MP () x:ϕ) y:ψ) v:γ _ _
+      lemma (e · x · y · z) v u:ϕ⇒ψ v:ϕ nu nv with headO e
+      lemma (e · x · y · z) v u:ϕ⇒ψ v:ϕ () nv | True
+      lemma (e · x · y · z) v u:ϕ⇒ψ v:ϕ nu nv | False = right refl
+
 
 {-
 -- ### Sub Section 2.4 Normalisation
@@ -342,13 +454,13 @@ module Normalisation where
   open ARS using (SN[_] ; SN ; SN→WN ;
                   Closure[_] ; refl ; step ; transit ;
                   SN-on-Closure ; SN-double-ind)
-  open Combinatory-Logic using (Term ; O ; S ; K ; 𝕍 ; _·_ ; _≻_ ; ≻K ; ≻S ; ≻·l ; ≻·r ;
-                                _≻*_ ; ≻*·l ;
-                                _⊢_~_ ; ⊢-O ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
+  open Combinatory-Logic using (Term ; O ; S ; K ; 𝕍 ; _·_ ; Pair ; Proj0 ; Proj1 ;
+                                _≻_ ; ≻K ; ≻S ; ≻·l ; ≻·r ; ≻Proj0 ; ≻Proj1 ;
+                                _≻*_ ; ≻*·l ; ≻*·r ;
+                                _⊢_~_ ; ⊢-O ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ; ⊢-Pair ; ⊢-Proj0 ; ⊢-Proj1 ;
                                 neutral ; neutral· ;
                                 ≻-preserve ; ≻-progress ;
-                                SN·lemma)
-
+                                SN·lemma ; SN·lemma' )
 
   SN≻ : Term → Set
   SN≻ = SN[ _≻_ ]
@@ -359,36 +471,42 @@ module Normalisation where
   ⊨ e ~ ⊥     = SN≻ e
   ⊨ e ~ var n = SN≻ e
   ⊨ e ~ ϕ ⇒ ψ = {x : Term} → ⊨ x ~ ϕ → ⊨ e · x ~ ψ
+  ⊨ e ~ ϕ /\ ψ = (⊨ Proj0 · e ~ ϕ) × (⊨ Proj1 · e ~ ψ)
 
   -- theorem 1.1
   sem-SN : {e : Term} (ϕ : Formula)
-      → ⊨ e ~ ϕ
-      → SN≻ e
+         → ⊨ e ~ ϕ
+         → SN≻ e
   -- theorem 1.2
   sem-preserve : {e : Term} (ϕ : Formula)
-            → ⊨ e ~ ϕ
-            → ({e' : Term} → e ≻* e' → ⊨ e' ~ ϕ)
+               → ⊨ e ~ ϕ
+               → ({e' : Term} → e ≻* e' → ⊨ e' ~ ϕ)
   -- theorem 1.3
-  sem-neutral : {e : Term} (ϕ : Formula) (neu-e : neutral e ≡ True)
-           → ({e' : Term} → e ≻ e' → ⊨ e' ~ ϕ)
-           → ⊨ e ~ ϕ
+  sem-neutral : {e : Term} (ϕ : Formula)
+              → (neu-e : neutral e ≡ True)
+              → ({e' : Term} → e ≻ e' → ⊨ e' ~ ϕ)
+              → ⊨ e ~ ϕ
 
   -- corollary of theorem 1.3: a variable term is always semantically well-typed
   -- because it is neutral and cannot be further reduced.
   ⊨𝕍n:ϕ : {n : ℕ} (ϕ : Formula) → ⊨ 𝕍 n ~ ϕ
-  ⊨𝕍n:ϕ ϕ = sem-neutral ϕ refl λ { () }
+  ⊨𝕍n:ϕ ϕ = sem-neutral ϕ refl λ ()
 
   -- proof of theorem 1.1
   sem-SN     ⊤       sem = sem
   sem-SN     ⊥       sem = sem
   sem-SN     (var x) sem = sem
-  sem-SN {e} (ϕ ⇒ ψ) ⊨e:ϕ⇒ψ = 
+  sem-SN {e} (ϕ ⇒ ψ) ⊨e:ϕ⇒ψ =
     let v        = 𝕍 Z
         ⊨v:ϕ     = ⊨𝕍n:ϕ ϕ
         ⊨e·v:ψ   = ⊨e:ϕ⇒ψ ⊨v:ϕ
         SN≻e·v   = sem-SN {e · v} ψ ⊨e·v:ψ
         SN≻e     = SN·lemma e v SN≻e·v
      in SN≻e
+  sem-SN {e} (ϕ /\ ψ) ⟨ ⊨x:ϕ , ⊨y:ψ ⟩ =
+     let SN≻proj0e·v = sem-SN {Proj0 · e} ϕ ⊨x:ϕ
+         SN≻e        = SN·lemma' Proj0 e SN≻proj0e·v
+      in SN≻e
 
 
   -- proof of theorem 1.2
@@ -401,6 +519,12 @@ module Normalisation where
       ⊨e':ϕ⇒ψ {x} ⊨x:ϕ = let ⊨e·x:ψ    = ⊨e:ϕ⇒ψ ⊨x:ϕ
                              e·x≻*e'·x = ≻*·l e≻*e'
                           in sem-preserve {e · x} ψ ⊨e·x:ψ {e' · x} e·x≻*e'·x
+  sem-preserve {e} (ϕ /\ ψ) ⟨ ⊨x:ϕ , ⊨y:ψ ⟩ {e'} e≻*e' =
+    let x≻*x' = ≻*·r e≻*e'
+        y≻*y' = ≻*·r e≻*e'
+        ⊨x':ϕ = sem-preserve ϕ ⊨x:ϕ x≻*x'
+        ⊨y':ψ = sem-preserve ψ ⊨y:ψ y≻*y'
+     in ⟨ ⊨x':ϕ , ⊨y':ψ ⟩
 
   -- proof of theorem 1.3
   sem-neutral     ⊤       neu-e ≻→⊨ = SN λ { e≻e' → sem-SN ⊤       (≻→⊨ e≻e') }
@@ -418,6 +542,11 @@ module Normalisation where
                                 SN≻x' = SN≻x x≻x'
                              in SN→⊨ϕ⇒ψ SN≻x' ⊨x':ϕ }
          in ⊨e·x:ψ
+  sem-neutral {e} (ϕ /\ ψ) neu-e ≻→⊨ =
+    let ⊨x:ϕ = sem-neutral {Proj0 · e} ϕ refl λ { (≻·r e≻e') → Σ.fst (≻→⊨ e≻e') }
+        ⊨y:ψ = sem-neutral {Proj1 · e} ψ refl λ { (≻·r e≻e') → Σ.snd (≻→⊨ e≻e') }
+     in ⟨ ⊨x:ϕ , ⊨y:ψ ⟩
+
 
   -- lemma 2: semantic type of K
   ⊨K : (ϕ ψ : Formula) → ⊨ K ~ ϕ ⇒ ψ ⇒ ϕ
@@ -475,6 +604,48 @@ module Normalisation where
   ⊨O : ⊨ O ~ ⊤
   ⊨O = SN λ ()
 
+  -- semantically well-typed property for projections
+  ⊨Proj0 : (ϕ ψ : Formula) → ⊨ Proj0 ~ ϕ /\ ψ ⇒ ϕ
+  ⊨Proj0 ϕ ψ ⟨ ⊨fst , ⊨snd ⟩ = ⊨fst
+
+  -- semantically well-typed property for projections
+  ⊨Proj1 : (ϕ ψ : Formula) → ⊨ Proj1 ~ ϕ /\ ψ ⇒ ψ
+  ⊨Proj1 ϕ ψ ⟨ ⊨fst , ⊨snd ⟩ = ⊨snd
+
+  -- semantically well-typed property for the pair
+  ⊨Pair : (ϕ ψ : Formula) → ⊨ Pair ~ ϕ ⇒ ψ ⇒ ϕ /\ ψ
+  ⊨Pair ϕ ψ {x} ⊨x:ϕ {y} ⊨y:ψ =
+    let sn-x = sem-SN {x} ϕ ⊨x:ϕ
+        sn-y = sem-SN {y} ψ ⊨y:ψ
+     in helper x ⊨x:ϕ sn-x y ⊨y:ψ sn-y
+    where
+      ⊨proj0 : ⊨ Proj0 ~ ϕ /\ ψ ⇒ ϕ
+      ⊨proj0 = ⊨Proj0 ϕ ψ
+
+      ⊨proj1 : ⊨ Proj1 ~ ϕ /\ ψ ⇒ ψ
+      ⊨proj1 = ⊨Proj1 ϕ ψ
+
+      sem-≻x : {x x' : Term} → ⊨ x ~ ϕ → x ≻ x' → ⊨ x' ~ ϕ
+      sem-≻x ⊨x:ϕ x≻x' = sem-preserve ϕ ⊨x:ϕ (step x≻x')
+
+      sem-≻y : {y y' : Term} → ⊨ y ~ ψ → y ≻ y' → ⊨ y' ~ ψ
+      sem-≻y ⊨y:ψ y≻y' = sem-preserve ψ ⊨y:ψ (step y≻y')
+
+      helper : (x : Term) (sem-x : ⊨ x ~ ϕ) (sn-x : SN≻ x)
+             → (y : Term) (sem-y : ⊨ y ~ ψ) (sn-y : SN≻ y)
+             → ⊨ Pair · x · y ~ ϕ /\ ψ
+      helper x sem-x (SN sn-x) y sem-y (SN sn-y) =
+               ⟨ sem-neutral {Proj0 · (Pair · x · y)} ϕ refl
+                 (λ { (≻·r (≻·l (≻·r {x'} x≻))) → ⊨proj0 (helper x' (sem-≻x sem-x x≻) (sn-x x≻) y sem-y (SN sn-y))
+                    ; (≻·r (≻·r {y'} y≻))       → ⊨proj0 (helper x sem-x (SN sn-x) y' (sem-≻y sem-y y≻) (sn-y y≻))
+                    ; ≻Proj0 → sem-x } )
+               , sem-neutral {Proj1 · (Pair · x · y)} ψ refl
+                 (λ { (≻·r (≻·l (≻·r {x'} x≻))) → ⊨proj1 (helper x' (sem-≻x sem-x x≻) (sn-x x≻) y sem-y (SN sn-y))
+                    ; (≻·r (≻·r {y'} y≻))       → ⊨proj1 (helper x sem-x (SN sn-x) y' (sem-≻y sem-y y≻) (sn-y y≻))
+                      ; ≻Proj1 → sem-y } ) ⟩
+
+
+
   -- theorem 4: syntactically well-typed implies semantically well-typed
   ⊢→⊨ : {Γ : Context} {e : Term} {ϕ : Formula}
       → ({n : ℕ} {ϕ : Formula} → Γ ! n ≔ ϕ → ⊨ 𝕍 n ~ ϕ)
@@ -485,9 +656,12 @@ module Normalisation where
       = let ⊨x:ϕ⇒ψ = ⊢→⊨ f ⊢x:ϕ⇒ψ
             ⊨y:ϕ   = ⊢→⊨ f ⊢y:ϕ
          in ⊨x:ϕ⇒ψ ⊨y:ϕ
-  ⊢→⊨ {Γ} {O}   {⊤}                             f ⊢-O = ⊨O
-  ⊢→⊨ {Γ} {K}   {ϕ ⇒ ψ ⇒ ϕ}                     f ⊢-K = ⊨K ϕ ψ
-  ⊢→⊨ {Γ} {S}   {(ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ} f ⊢-S = ⊨S ϕ ψ γ
+  ⊢→⊨ {Γ} {O}     {⊤}                             f ⊢-O     = ⊨O
+  ⊢→⊨ {Γ} {K}     {ϕ ⇒ ψ ⇒ ϕ}                     f ⊢-K     = ⊨K ϕ ψ
+  ⊢→⊨ {Γ} {S}     {(ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ} f ⊢-S     = ⊨S ϕ ψ γ
+  ⊢→⊨ {Γ} {Pair}  {ϕ ⇒ ψ ⇒ ϕ /\ ψ}                f ⊢-Pair  = ⊨Pair ϕ ψ
+  ⊢→⊨ {Γ} {Proj0} {ϕ /\ ψ ⇒ ϕ}                    f ⊢-Proj0 = ⊨Proj0 ϕ ψ
+  ⊢→⊨ {Γ} {Proj1} {ϕ /\ ψ ⇒ ψ}                    f ⊢-Proj1 = ⊨Proj1 ϕ ψ
 
   -- lemma 5: well-typed term under the empty context is strongly normalising.
   ⊢→SN : {e : Term} {ϕ : Formula}
@@ -518,15 +692,11 @@ module Normalisation where
 module Consistency where
   open ND-minimal using (Equi-Consitency)
   open Hilbert-System using (Minimal⇒Hilbert)
-  open Combinatory-Logic using (Term ; O ; S ; K ; 𝕍 ; _·_ ;
-                                headO ;
+  open Combinatory-Logic using (Term ; O ; S ; K ; 𝕍 ; _·_ ; Pair ; Proj0 ; Proj1 ;
+                                headO ; O·-not-typeable ;
                                 _⊢_~_ ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
                                 Hilbert⇒SK )
   open Normalisation using (⊢→WN)
-
-  O·-not-typeable : {ϕ : Formula} (u v : Term) → headO u ≡ False → ¬ ([] ⊢ u · v ~ ϕ)
-  O·-not-typeable O v head (⊢-MP () ⊢e:A)
-  O·-not-typeable (x · y) v head (⊢-MP ⊢xy:A→ϕ ⊢v:A) = O·-not-typeable x y head ⊢xy:A→ϕ
 
   case-with-equation : (b : Bool) → b ≡ True ⊎ b ≡ False
   case-with-equation True = left refl
@@ -544,7 +714,7 @@ module Consistency where
   ... | ⟨ u · e1 · e2 · e3 , ⟨ ⊢-MP (⊢-MP (⊢-MP ⊢u:ABC ⊢e1:A) ⊢e2:B) ⊢e3:C , ¬neutral-e' ⟩ ⟩
     with case-with-equation (headO u)
   ... | left   headO = bool-contradiction headO ¬neutral-e'
-  ... | right ¬headO = O·-not-typeable u e1 ¬headO (⊢-MP ⊢u:ABC ⊢e1:A)
+  ... | right ¬headO = O·-not-typeable u ¬headO ⊢u:ABC
 
 
   nd-consistent : ¬ ([] ⊢m ⊥)

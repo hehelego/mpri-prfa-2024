@@ -59,6 +59,9 @@ infix 4 ¬_
 ¬_ : Set → Set
 ¬ A = A → Empty
 
+absurd : {A : Set} → Empty → A
+absurd ()
+
 record _⇔_ (A B : Set) : Set where
   field
     ⇒ : A → B

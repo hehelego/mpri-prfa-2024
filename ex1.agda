@@ -9,12 +9,14 @@ open import common
 -- ### Sub Section 1.1 classical logic
 -}
 
+infixr 35 _/\_
 infixr 30 _⇒_
 data Formula : Set where
   var : ℕ → Formula
   ⊤ : Formula
   ⊥ : Formula
   _⇒_ : Formula → Formula → Formula
+  _/\_ : Formula → Formula → Formula
 
 -- 1.1.d
 Ground : Formula → Set
@@ -22,6 +24,7 @@ Ground (var x) = Empty
 Ground ⊤ = Unit
 Ground ⊥ = Unit
 Ground (ϕ ⇒ ψ) = Ground ϕ × Ground ψ
+Ground (ϕ /\ ψ) = Ground ϕ × Ground ψ
 
 infixr 50 ~_
 ~_ : Formula → Formula
@@ -45,6 +48,11 @@ module ND-classical where
     ⊢-elim : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ϕ → Γ ⊢ ψ
     -- proof by contradiction
     ⊢-pbc : {Γ : Context} {ϕ : Formula} → ~ ϕ ∷ Γ ⊢ ⊥ → Γ ⊢ ϕ
+    -- conjunction introduction
+    ⊢-conj : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ψ → Γ ⊢ ϕ /\ ψ
+    -- conjunction elimination left/right
+    ⊢-proj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
+    ⊢-proj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
 
   -- b.1
   example-1 : {Γ : Context} (ϕ : Formula) → Γ ⊢ ϕ ⇒ ϕ
@@ -53,7 +61,7 @@ module ND-classical where
   -- b.2
   example-2 : {Γ : Context} {ϕ : Formula} → ϕ ∷ Γ ⊢ ~ ~ ϕ
   example-2 = ⊢-intr let ⊢ϕ⇒⊥ = ⊢-ax (here refl)
-                         ⊢ϕ     = ⊢-ax (there (here refl))
+                         ⊢ϕ   = ⊢-ax (there (here refl))
                       in ⊢-elim ⊢ϕ⇒⊥ ⊢ϕ
 
   -- b.3
@@ -81,6 +89,11 @@ module ND-classical where
   weaken Γ⊆Δ (⊢-pbc ~ϕ,Γ⊢⊥) = let ~ϕ,Γ⊆~ϕ,Δ = ∷-subset Γ⊆Δ
                                   ~ϕ,Δ⊢⊥    = weaken ~ϕ,Γ⊆~ϕ,Δ ~ϕ,Γ⊢⊥
                                in ⊢-pbc ~ϕ,Δ⊢⊥
+  weaken Γ⊆Δ (⊢-conj Γ⊢ϕ Γ⊢ψ) = let Δ⊢ϕ = weaken Γ⊆Δ Γ⊢ϕ
+                                    Δ⊢ψ = weaken Γ⊆Δ Γ⊢ψ
+                                 in ⊢-conj Δ⊢ϕ Δ⊢ψ
+  weaken Γ⊆Δ (⊢-proj0 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj0 Δ⊢ϕ·ψ
+  weaken Γ⊆Δ (⊢-proj1 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj1 Δ⊢ϕ·ψ
 
 
 {-
@@ -99,8 +112,13 @@ module ND-minimal where
     ⊢-intr : {Γ : Context} {ϕ ψ : Formula} → ϕ ∷ Γ ⊢ ψ → Γ ⊢ ϕ ⇒ ψ
     -- implication elimination
     ⊢-elim : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ϕ → Γ ⊢ ψ
+    -- conjunction introduction
+    ⊢-conj : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ψ → Γ ⊢ ϕ /\ ψ
+    -- conjunction elimination left/right
+    ⊢-proj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
+    ⊢-proj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
 
-  open ND-classical using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim ; ⊢-pbc) renaming (_⊢_ to _⊢c_)
+  open ND-classical using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim ; ⊢-pbc ; ⊢-conj ; ⊢-proj0 ; ⊢-proj1) renaming (_⊢_ to _⊢c_)
 
   -- b
   weaken : {Γ Δ : Context} {ϕ : Formula} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
@@ -110,6 +128,11 @@ module ND-minimal where
   weaken Γ⊆Δ (⊢-elim Γ⊢ϕ⇒ψ Γ⊢ϕ) = let Δ⊢ϕ⇒ψ = weaken Γ⊆Δ Γ⊢ϕ⇒ψ
                                       Δ⊢ϕ   = weaken Γ⊆Δ Γ⊢ϕ
                                    in ⊢-elim Δ⊢ϕ⇒ψ Δ⊢ϕ
+  weaken Γ⊆Δ (⊢-conj Γ⊢ϕ Γ⊢ψ) = let Δ⊢ϕ = weaken Γ⊆Δ Γ⊢ϕ
+                                    Δ⊢ψ = weaken Γ⊆Δ Γ⊢ψ
+                                 in ⊢-conj Δ⊢ϕ Δ⊢ψ
+  weaken Γ⊆Δ (⊢-proj0 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj0 Δ⊢ϕ·ψ
+  weaken Γ⊆Δ (⊢-proj1 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj1 Δ⊢ϕ·ψ
 
   -- c
   implication : {Γ : Context} {ϕ : Formula} → Γ ⊢ ϕ → Γ ⊢c ϕ
@@ -118,7 +141,12 @@ module ND-minimal where
   implication (⊢-intr ϕ,Γ⊢ψ) = let ϕ,Γ⊢'ψ = implication ϕ,Γ⊢ψ in ⊢-intr ϕ,Γ⊢'ψ
   implication (⊢-elim Γ⊢ϕ⇒ψ Γ⊢ϕ) = let Γ⊢'ϕ⇒ψ = implication Γ⊢ϕ⇒ψ
                                        Γ⊢'ϕ   = implication Γ⊢ϕ
-                                    in (⊢-elim Γ⊢'ϕ⇒ψ Γ⊢'ϕ)
+                                    in ⊢-elim Γ⊢'ϕ⇒ψ Γ⊢'ϕ
+  implication (⊢-conj Γ⊢ϕ Γ⊢ψ) = let Γ⊢'ϕ = implication Γ⊢ϕ
+                                     Γ⊢'ψ = implication Γ⊢ψ
+                                    in ⊢-conj Γ⊢'ϕ Γ⊢'ψ
+  implication (⊢-proj0 Γ⊢ϕ·ψ) = let Γ⊢'ϕ·ψ = implication Γ⊢ϕ·ψ in ⊢-proj0 Γ⊢'ϕ·ψ
+  implication (⊢-proj1 Γ⊢ϕ·ψ) = let Γ⊢'ϕ·ψ = implication Γ⊢ϕ·ψ in ⊢-proj1 Γ⊢'ϕ·ψ
 
   -- d
   friedman[_] : Formula → Formula → Formula
@@ -126,6 +154,7 @@ module ND-minimal where
   friedman[ ξ ] ⊤ = ⊤
   friedman[ ξ ] ⊥ = ξ
   friedman[ ξ ] (ϕ ⇒ ψ) = (friedman[ ξ ] ϕ) ⇒ (friedman[ ξ ] ψ)
+  friedman[ ξ ] (ϕ /\ ψ) = (friedman[ ξ ] ϕ) /\ (friedman[ ξ ] ψ)
 
   -- e
   DNE-Friedman : {Γ : Context} {ξ : Formula} (ϕ : Formula) → Γ ⊢ friedman[ ξ ] (~ ~ ϕ ⇒ ϕ)
@@ -152,6 +181,20 @@ module ND-minimal where
                              s1 = ⊢-intr s2
                              s0 = ⊢-intr s1
                           in s0
+  DNE-Friedman (ϕ /\ ψ) = let IHϕ = DNE-Friedman ϕ
+                              IHψ = DNE-Friedman ψ
+                              p5 = ⊢-proj0 (⊢-ax (here refl))
+                              q5 = ⊢-proj1 (⊢-ax (here refl))
+                              p4 = ⊢-elim (⊢-ax (there (here refl))) p5
+                              q4 = ⊢-elim (⊢-ax (there (here refl))) q5
+                              p3 = ⊢-intr     p4 ; q3 = ⊢-intr     q4
+                              p2 = ⊢-elim (⊢-ax (there (here refl))) p3
+                              q2 = ⊢-elim (⊢-ax (there (here refl))) q3
+                              p1 = ⊢-intr     p2 ; q1 = ⊢-intr     q2
+                              p0 = ⊢-elim IHϕ p1 ; q0 = ⊢-elim IHψ q1
+                              s1 = ⊢-conj p0 q0
+                              s0 = ⊢-intr s1
+                           in s0
 
   PBC-Friedman : {Γ : Context} {ξ ϕ : Formula} → friedman[ ξ ] (~ ϕ) ∷ Γ ⊢ friedman[ ξ ] ⊥ → Γ ⊢ friedman[ ξ ] ϕ
   PBC-Friedman {ϕ = ϕ} ~ϕ⊢ = let ⊢~~ϕ = ⊢-intr ~ϕ⊢
@@ -167,6 +210,11 @@ module ND-minimal where
                                   ⊢'ϕ   = Friedman ⊢ϕ
                                in ⊢-elim ⊢'ϕ⇒ψ ⊢'ϕ
   Friedman (⊢-pbc ~ϕ⊢) = let f[~ϕ]⊢ = Friedman ~ϕ⊢ in PBC-Friedman f[~ϕ]⊢
+  Friedman (⊢-conj ⊢ϕ ⊢ψ) = let ⊢'ϕ = Friedman ⊢ϕ
+                                ⊢'ψ = Friedman ⊢ψ
+                             in ⊢-conj ⊢'ϕ ⊢'ψ
+  Friedman (⊢-proj0 ⊢ϕ·ψ) = ⊢-proj0 (Friedman ⊢ϕ·ψ)
+  Friedman (⊢-proj1 ⊢ϕ·ψ) = ⊢-proj1 (Friedman ⊢ϕ·ψ)
 
   friedman-of-ground : (ϕ : Formula) → Ground ϕ → friedman[ ⊥ ] ϕ ≡ ϕ
   friedman-of-ground (var x) ()
@@ -175,6 +223,9 @@ module ND-minimal where
   friedman-of-ground (ϕ ⇒ ψ) ⟨ Gϕ , Gψ ⟩ = let ϕ' = friedman-of-ground ϕ Gϕ
                                                ψ' = friedman-of-ground ψ Gψ
                                             in cong2 _⇒_  ϕ' ψ'
+  friedman-of-ground (ϕ /\ ψ) ⟨ Gϕ , Gψ ⟩ = let ϕ' = friedman-of-ground ϕ Gϕ
+                                                ψ' = friedman-of-ground ψ Gψ
+                                            in cong2 _/\_  ϕ' ψ'
 
   -- g
   GroundTruth : (ϕ : Formula) → Ground ϕ → ([] ⊢ ϕ) ⇔ ([] ⊢c ϕ)
