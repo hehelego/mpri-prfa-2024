@@ -9,6 +9,7 @@ open import common
 -- ### Sub Section 1.1 classical logic
 -}
 
+infixr 40 _\/_
 infixr 35 _/\_
 infixr 30 _⇒_
 data Formula : Set where
@@ -17,14 +18,62 @@ data Formula : Set where
   ⊥ : Formula
   _⇒_ : Formula → Formula → Formula
   _/\_ : Formula → Formula → Formula
+  _\/_ : Formula → Formula → Formula
 
 -- 1.1.d
-Ground : Formula → Set
-Ground (var x) = Empty
-Ground ⊤ = Unit
-Ground ⊥ = Unit
-Ground (ϕ ⇒ ψ) = Ground ϕ × Ground ψ
-Ground (ϕ /\ ψ) = Ground ϕ × Ground ψ
+data Ground : Formula → Set where
+  ⊤ : Ground ⊤
+  ⊥ : Ground ⊥
+  _⇒_ : {ϕ ψ : Formula} → Ground ϕ → Ground ψ → Ground (ϕ ⇒ ψ)
+  _/\_ :{ϕ ψ : Formula} → Ground ϕ → Ground ψ → Ground (ϕ /\ ψ)
+  _\/_ : {ϕ ψ : Formula} → Ground ϕ → Ground ψ → Ground (ϕ \/ ψ)
+
+data GValue : {ϕ : Formula} (gϕ : Ground ϕ) (b : Bool) → Set where
+  t⊤ : GValue ⊤ True
+  f⊥ : GValue ⊥ False
+  t/\t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ True → GValue gψ True → GValue (gϕ /\ gψ) True
+  t/\f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ True → GValue gψ False → GValue (gϕ /\ gψ) False
+  f/\t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ False → GValue gψ True → GValue (gϕ /\ gψ) False
+  f/\f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ False → GValue gψ False → GValue (gϕ /\ gψ) False
+  t\/t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ True → GValue gψ True → GValue (gϕ \/ gψ) True
+  t\/f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ True → GValue gψ False → GValue (gϕ \/ gψ) True
+  f\/t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ False → GValue gψ True → GValue (gϕ \/ gψ) True
+  f\/f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ False → GValue gψ False → GValue (gϕ \/ gψ) False
+  t=>t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ True → GValue gψ True → GValue (gϕ ⇒ gψ) True
+  t=>f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ True → GValue gψ False → GValue (gϕ ⇒ gψ) False
+  f=>t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ False → GValue gψ True → GValue (gϕ ⇒ gψ) True
+  f=>f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+       → GValue gϕ False → GValue gψ False → GValue (gϕ ⇒ gψ) True
+
+GValueDec : {ϕ : Formula} (gϕ : Ground ϕ) → (GValue gϕ True) ⊎ (GValue gϕ False)
+GValueDec ⊤ = left t⊤
+GValueDec ⊥ = right f⊥
+GValueDec (ϕ ⇒  ψ) with GValueDec ϕ | GValueDec ψ
+... | left  tϕ | left  tψ = left (t=>t tϕ tψ)
+... | left  tϕ | right fψ = right (t=>f tϕ fψ)
+... | right fϕ | left  tψ = left (f=>t fϕ tψ)
+... | right fϕ | right fψ = left (f=>f fϕ fψ)
+GValueDec (ϕ /\ ψ) with GValueDec ϕ | GValueDec ψ
+... | left  tϕ | left  tψ = left (t/\t tϕ tψ)
+... | left  tϕ | right fψ = right (t/\f tϕ fψ)
+... | right fϕ | left  tψ = right (f/\t fϕ tψ)
+... | right fϕ | right fψ = right (f/\f fϕ fψ)
+GValueDec (ϕ \/ ψ) with GValueDec ϕ | GValueDec ψ
+... | left  tϕ | left  tψ = left (t\/t tϕ tψ)
+... | left  tϕ | right fψ = left (t\/f tϕ fψ)
+... | right fϕ | left  tψ = left (f\/t fϕ tψ)
+... | right fϕ | right fψ = right (f\/f fϕ fψ)
 
 infixr 50 ~_
 ~_ : Formula → Formula
@@ -53,6 +102,12 @@ module ND-classical where
     -- conjunction elimination left/right
     ⊢-proj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
     ⊢-proj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
+    -- disjunction introduction left/right
+    ⊢-inj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ϕ \/ ψ
+    ⊢-inj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ψ → Γ ⊢ ϕ \/ ψ
+    -- disjunction elimination
+    ⊢-case : {Γ : Context} {γ ϕ ψ : Formula} → Γ ⊢ ϕ \/ ψ → Γ ⊢ ϕ ⇒ γ → Γ ⊢ ψ ⇒ γ → Γ ⊢ γ
+
 
   -- b.1
   example-1 : {Γ : Context} (ϕ : Formula) → Γ ⊢ ϕ ⇒ ϕ
@@ -94,7 +149,12 @@ module ND-classical where
                                  in ⊢-conj Δ⊢ϕ Δ⊢ψ
   weaken Γ⊆Δ (⊢-proj0 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj0 Δ⊢ϕ·ψ
   weaken Γ⊆Δ (⊢-proj1 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj1 Δ⊢ϕ·ψ
-
+  weaken Γ⊆Δ (⊢-inj0 Γ⊢ϕ+ψ) = let Δ⊢ϕ+ψ = weaken Γ⊆Δ Γ⊢ϕ+ψ in ⊢-inj0 Δ⊢ϕ+ψ
+  weaken Γ⊆Δ (⊢-inj1 Γ⊢ϕ+ψ) = let Δ⊢ϕ+ψ = weaken Γ⊆Δ Γ⊢ϕ+ψ in ⊢-inj1 Δ⊢ϕ+ψ
+  weaken Γ⊆Δ (⊢-case Γ⊢ϕ+ψ Γ⊢ϕ⇒γ Γ⊢ψ⇒γ) = let Δ⊢ϕ+ψ = weaken Γ⊆Δ Γ⊢ϕ+ψ
+                                              Δ⊢ϕ⇒γ = weaken Γ⊆Δ Γ⊢ϕ⇒γ
+                                              Δ⊢ψ⇒γ = weaken Γ⊆Δ Γ⊢ψ⇒γ
+                                           in ⊢-case Δ⊢ϕ+ψ Δ⊢ϕ⇒γ Δ⊢ψ⇒γ
 
 {-
 -- ### Sub Section 1.2 minimal logic
@@ -117,8 +177,19 @@ module ND-minimal where
     -- conjunction elimination left/right
     ⊢-proj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
     ⊢-proj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
+    -- disjunction introduction left/right
+    ⊢-inj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ϕ \/ ψ
+    ⊢-inj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ψ → Γ ⊢ ϕ \/ ψ
+    -- disjunction elimination
+    ⊢-case : {Γ : Context} {γ ϕ ψ : Formula} → Γ ⊢ ϕ \/ ψ → Γ ⊢ ϕ ⇒ γ → Γ ⊢ ψ ⇒ γ → Γ ⊢ γ
 
-  open ND-classical using (⊢-true ; ⊢-ax ; ⊢-intr ; ⊢-elim ; ⊢-pbc ; ⊢-conj ; ⊢-proj0 ; ⊢-proj1) renaming (_⊢_ to _⊢c_)
+  open ND-classical using (⊢-true ; ⊢-ax ;
+                           ⊢-intr ; ⊢-elim ;
+                           ⊢-pbc ;
+                           ⊢-conj ; ⊢-proj0 ; ⊢-proj1 ;
+                           ⊢-inj0 ; ⊢-inj1 ; ⊢-case)
+                    renaming (_⊢_ to _⊢c_)
+
 
   -- b
   weaken : {Γ Δ : Context} {ϕ : Formula} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
@@ -133,6 +204,12 @@ module ND-minimal where
                                  in ⊢-conj Δ⊢ϕ Δ⊢ψ
   weaken Γ⊆Δ (⊢-proj0 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj0 Δ⊢ϕ·ψ
   weaken Γ⊆Δ (⊢-proj1 Γ⊢ϕ·ψ) = let Δ⊢ϕ·ψ = weaken Γ⊆Δ Γ⊢ϕ·ψ in ⊢-proj1 Δ⊢ϕ·ψ
+  weaken Γ⊆Δ (⊢-inj0 Γ⊢ϕ+ψ) = let Δ⊢ϕ+ψ = weaken Γ⊆Δ Γ⊢ϕ+ψ in ⊢-inj0 Δ⊢ϕ+ψ
+  weaken Γ⊆Δ (⊢-inj1 Γ⊢ϕ+ψ) = let Δ⊢ϕ+ψ = weaken Γ⊆Δ Γ⊢ϕ+ψ in ⊢-inj1 Δ⊢ϕ+ψ
+  weaken Γ⊆Δ (⊢-case Γ⊢ϕ+ψ Γ⊢ϕ⇒γ Γ⊢ψ⇒γ) = let Δ⊢ϕ+ψ = weaken Γ⊆Δ Γ⊢ϕ+ψ
+                                              Δ⊢ϕ⇒γ = weaken Γ⊆Δ Γ⊢ϕ⇒γ
+                                              Δ⊢ψ⇒γ = weaken Γ⊆Δ Γ⊢ψ⇒γ
+                                           in ⊢-case Δ⊢ϕ+ψ Δ⊢ϕ⇒γ Δ⊢ψ⇒γ
 
   -- c
   implication : {Γ : Context} {ϕ : Formula} → Γ ⊢ ϕ → Γ ⊢c ϕ
@@ -147,6 +224,12 @@ module ND-minimal where
                                     in ⊢-conj Γ⊢'ϕ Γ⊢'ψ
   implication (⊢-proj0 Γ⊢ϕ·ψ) = let Γ⊢'ϕ·ψ = implication Γ⊢ϕ·ψ in ⊢-proj0 Γ⊢'ϕ·ψ
   implication (⊢-proj1 Γ⊢ϕ·ψ) = let Γ⊢'ϕ·ψ = implication Γ⊢ϕ·ψ in ⊢-proj1 Γ⊢'ϕ·ψ
+  implication (⊢-inj0 Γ⊢ϕ+ψ) = let Γ⊢'ϕ+ψ = implication Γ⊢ϕ+ψ in ⊢-inj0 Γ⊢'ϕ+ψ
+  implication (⊢-inj1 Γ⊢ϕ+ψ) = let Γ⊢'ϕ+ψ = implication Γ⊢ϕ+ψ in ⊢-inj1 Γ⊢'ϕ+ψ
+  implication (⊢-case Γ⊢ϕ+ψ Γ⊢ϕ⇒γ Γ⊢ψ⇒γ) = let Γ⊢'ϕ+ψ = implication Γ⊢ϕ+ψ
+                                               Γ⊢'ϕ⇒γ = implication Γ⊢ϕ⇒γ
+                                               Γ⊢'ψ⇒γ = implication Γ⊢ψ⇒γ
+                                            in ⊢-case Γ⊢'ϕ+ψ Γ⊢'ϕ⇒γ Γ⊢'ψ⇒γ
 
   -- d
   friedman[_] : Formula → Formula → Formula
@@ -155,6 +238,7 @@ module ND-minimal where
   friedman[ ξ ] ⊥ = ξ
   friedman[ ξ ] (ϕ ⇒ ψ) = (friedman[ ξ ] ϕ) ⇒ (friedman[ ξ ] ψ)
   friedman[ ξ ] (ϕ /\ ψ) = (friedman[ ξ ] ϕ) /\ (friedman[ ξ ] ψ)
+  friedman[ ξ ] (ϕ \/ ψ) = (((friedman[ ξ ] ϕ) \/ (friedman[ ξ ] ψ)) ⇒ ξ) ⇒ ξ
 
   -- e
   DNE-Friedman : {Γ : Context} {ξ : Formula} (ϕ : Formula) → Γ ⊢ friedman[ ξ ] (~ ~ ϕ ⇒ ϕ)
@@ -195,11 +279,25 @@ module ND-minimal where
                               s1 = ⊢-conj p0 q0
                               s0 = ⊢-intr s1
                            in s0
+  DNE-Friedman (ϕ \/ ψ) = let s3 = ⊢-elim (⊢-ax (here refl)) (⊢-ax (there (here refl)))
+                              s2 = ⊢-intr s3
+                              s1 = ⊢-elim (⊢-ax (there (here refl))) s2
+                              s0 = ⊢-intr s1
+                           in ⊢-intr s0
 
   PBC-Friedman : {Γ : Context} {ξ ϕ : Formula} → friedman[ ξ ] (~ ϕ) ∷ Γ ⊢ friedman[ ξ ] ⊥ → Γ ⊢ friedman[ ξ ] ϕ
   PBC-Friedman {ϕ = ϕ} ~ϕ⊢ = let ⊢~~ϕ = ⊢-intr ~ϕ⊢
                                  dne  = DNE-Friedman ϕ
                               in ⊢-elim dne ⊢~~ϕ
+
+  compose : {Γ : Context} {ϕ ψ γ : Formula} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ψ ⇒ γ → Γ ⊢ ϕ ⇒ γ
+  compose ⊢ϕ⇒ψ ⊢ψ⇒γ = let ϕ⊢ψ⇒γ = weaken there ⊢ψ⇒γ
+                          ϕ⊢ϕ⇒ψ = weaken there ⊢ϕ⇒ψ
+                          ϕ⊢ϕ = ⊢-ax (here refl)
+                          ϕ⊢ψ = ⊢-elim ϕ⊢ϕ⇒ψ ϕ⊢ϕ
+                          ϕ⊢γ = ⊢-elim ϕ⊢ψ⇒γ ϕ⊢ψ
+                          ⊢ϕ⇒γ = ⊢-intr ϕ⊢γ
+                       in ⊢ϕ⇒γ
 
   -- f
   Friedman : {Γ : Context} {ϕ ξ : Formula} → Γ ⊢c ϕ → (map friedman[ ξ ] Γ) ⊢ friedman[ ξ ] ϕ
@@ -215,27 +313,115 @@ module ND-minimal where
                              in ⊢-conj ⊢'ϕ ⊢'ψ
   Friedman (⊢-proj0 ⊢ϕ·ψ) = ⊢-proj0 (Friedman ⊢ϕ·ψ)
   Friedman (⊢-proj1 ⊢ϕ·ψ) = ⊢-proj1 (Friedman ⊢ϕ·ψ)
+  Friedman (⊢-inj0 ⊢ϕ) = let ⊢'ϕ = Friedman ⊢ϕ
+                             ⊢'ϕ+ψ = ⊢-inj0 ⊢'ϕ
+                             Δ⊢'ϕ+ψ = weaken there ⊢'ϕ+ψ
+                          in ⊢-intr (⊢-elim (⊢-ax (here refl)) Δ⊢'ϕ+ψ)
+  Friedman (⊢-inj1 ⊢ψ) = let ⊢'ψ = Friedman ⊢ψ
+                             ⊢'ϕ+ψ = ⊢-inj1 ⊢'ψ
+                             Δ⊢'ϕ+ψ = weaken there ⊢'ϕ+ψ
+                          in ⊢-intr (⊢-elim (⊢-ax (here refl)) Δ⊢'ϕ+ψ)
+  Friedman (⊢-case {γ = γ} ⊢ϕ+ψ ⊢ϕ⇒γ ⊢ψ⇒γ) =
+    let ⊢'~~[ϕ+ψ] = Friedman ⊢ϕ+ψ
+        ~γ⊢'~~[ϕ+ψ] = weaken there ⊢'~~[ϕ+ψ]
+        ⊢'ϕ⇒γ = Friedman ⊢ϕ⇒γ
+        ⊢'ψ⇒γ = Friedman ⊢ψ⇒γ
+        ~γ,ϕ+ψ⊢'ϕ⇒γ = weaken (λ x → there (there x)) ⊢'ϕ⇒γ
+        ~γ,ϕ+ψ⊢'ψ⇒γ = weaken (λ x → there (there x)) ⊢'ψ⇒γ
+        ~γ,ϕ+ψ⊢~γ = ⊢-ax (there (here refl))
+        ~γ,ϕ+ψ⊢~ϕ = compose ~γ,ϕ+ψ⊢'ϕ⇒γ ~γ,ϕ+ψ⊢~γ
+        ~γ,ϕ+ψ⊢~ψ = compose ~γ,ϕ+ψ⊢'ψ⇒γ ~γ,ϕ+ψ⊢~γ
+        ~γ,ϕ+ψ⊢⊥ = ⊢-case (⊢-ax (here refl)) ~γ,ϕ+ψ⊢~ϕ ~γ,ϕ+ψ⊢~ψ
+        ~γ⊢~[ϕ+ψ] = ⊢-intr ~γ,ϕ+ψ⊢⊥
+        ~γ⊢'⊥ = ⊢-elim ~γ⊢'~~[ϕ+ψ] ~γ⊢~[ϕ+ψ]
+        ⊢'~~γ = ⊢-intr ~γ⊢'⊥
+        dne-γ = DNE-Friedman γ
+     in ⊢-elim dne-γ ⊢'~~γ
 
-  friedman-of-ground : (ϕ : Formula) → Ground ϕ → friedman[ ⊥ ] ϕ ≡ ϕ
-  friedman-of-ground (var x) ()
-  friedman-of-ground ⊤ Gϕ = refl
-  friedman-of-ground ⊥ Gϕ = refl
-  friedman-of-ground (ϕ ⇒ ψ) ⟨ Gϕ , Gψ ⟩ = let ϕ' = friedman-of-ground ϕ Gϕ
-                                               ψ' = friedman-of-ground ψ Gψ
-                                            in cong2 _⇒_  ϕ' ψ'
-  friedman-of-ground (ϕ /\ ψ) ⟨ Gϕ , Gψ ⟩ = let ϕ' = friedman-of-ground ϕ Gϕ
-                                                ψ' = friedman-of-ground ψ Gψ
-                                            in cong2 _/\_  ϕ' ψ'
+  GroundTranslationGround : {ϕ : Formula} (gϕ : Ground ϕ) → Ground (friedman[ ⊥ ] ϕ)
+  GroundTranslationGround ⊤ = ⊤
+  GroundTranslationGround ⊥ = ⊥
+  GroundTranslationGround (ϕ ⇒ ψ) = let gϕ = GroundTranslationGround ϕ
+                                        gψ = GroundTranslationGround ψ
+                                     in gϕ ⇒ gψ
+  GroundTranslationGround (ϕ /\ ψ) = let gϕ = GroundTranslationGround ϕ
+                                         gψ = GroundTranslationGround ψ
+                                      in gϕ /\ gψ
+  GroundTranslationGround (ϕ \/ ψ) = let gϕ = GroundTranslationGround ϕ
+                                         gψ = GroundTranslationGround ψ
+                                      in ((gϕ \/ gψ) ⇒ ⊥) ⇒ ⊥
+
+
+  MinimalFalse : {ϕ : Formula} (gϕ : Ground ϕ) → GValue gϕ False → [] ⊢ ϕ ⇒ ⊥
+  MinimalFalse' : {ϕ : Formula} (gϕ : Ground ϕ) → GValue gϕ False → [] ⊢ ⊥ ⇒ ϕ
+  MinimalTrue : {ϕ : Formula} (gϕ : Ground ϕ) → GValue gϕ True → [] ⊢ ϕ
+
+  MinimalFalse ⊥ v = ⊢-intr (⊢-ax (here refl))
+  MinimalFalse (ϕ ⇒  ψ) (t=>f tϕ fψ) =
+    let ϕ   = weaken (λ ()) (MinimalTrue ϕ tϕ)
+        ψ⇒⊥ = weaken (λ ()) (MinimalFalse ψ fψ)
+        ϕ⇒ψ = ⊢-ax (here refl)
+     in ⊢-intr (⊢-elim ψ⇒⊥ (⊢-elim ϕ⇒ψ ϕ))
+  MinimalFalse (ϕ /\ ψ) (t/\f tϕ fψ) = let ψ⇒⊥ = weaken (λ ()) (MinimalFalse ψ fψ)
+                                           ψ   = ⊢-proj1 (⊢-ax (here refl))
+                                        in ⊢-intr (⊢-elim ψ⇒⊥ ψ)
+  MinimalFalse (ϕ /\ ψ) (f/\t fϕ tψ) = let ϕ⇒⊥ = weaken (λ ()) (MinimalFalse ϕ fϕ)
+                                           ϕ   = ⊢-proj0 (⊢-ax (here refl))
+                                        in ⊢-intr (⊢-elim ϕ⇒⊥ ϕ)
+  MinimalFalse (ϕ /\ ψ) (f/\f fϕ fψ) = let ϕ⇒⊥ = weaken (λ ()) (MinimalFalse ϕ fϕ)
+                                           ϕ   = ⊢-proj0 (⊢-ax (here refl))
+                                        in ⊢-intr (⊢-elim ϕ⇒⊥ ϕ)
+  MinimalFalse (ϕ \/ ψ) (f\/f fϕ fψ) = let ϕ⇒⊥ = weaken (λ ()) (MinimalFalse ϕ fϕ)
+                                           ψ⇒⊥ = weaken (λ ()) (MinimalFalse ψ fψ)
+                                        in ⊢-intr (⊢-case (⊢-ax (here refl)) ϕ⇒⊥ ψ⇒⊥)
+
+  MinimalFalse' ⊥ v = ⊢-intr (⊢-ax (here refl))
+  MinimalFalse' (ϕ ⇒  ψ) (t=>f tϕ fψ) = let ⊥⇒ψ = weaken (λ ()) (MinimalFalse' ψ fψ)
+                                            ⊥   = ⊢-ax (there (here refl))
+                                         in ⊢-intr (⊢-intr (⊢-elim ⊥⇒ψ ⊥))
+  MinimalFalse' (ϕ /\ ψ) (t/\f tϕ fψ) = let ϕ   = weaken (λ ()) (MinimalTrue ϕ tϕ)
+                                            ⊥⇒ψ = weaken (λ ()) (MinimalFalse' ψ fψ)
+                                            ⊥   = ⊢-ax (here refl)
+                                         in ⊢-intr (⊢-conj ϕ (⊢-elim ⊥⇒ψ ⊥))
+  MinimalFalse' (ϕ /\ ψ) (f/\t fϕ tψ) = let ψ   = weaken (λ ()) (MinimalTrue ψ tψ)
+                                            ⊥⇒ϕ = weaken (λ ()) (MinimalFalse' ϕ fϕ)
+                                            ⊥   = ⊢-ax (here refl)
+                                         in ⊢-intr (⊢-conj (⊢-elim ⊥⇒ϕ ⊥) ψ)
+  MinimalFalse' (ϕ /\ ψ) (f/\f fϕ fψ) = let ⊥⇒ϕ = weaken (λ ()) (MinimalFalse' ϕ fϕ)
+                                            ⊥⇒ψ = weaken (λ ()) (MinimalFalse' ψ fψ)
+                                            ⊥   = ⊢-ax (here refl)
+                                            ϕ   = ⊢-elim ⊥⇒ϕ ⊥
+                                            ψ   = ⊢-elim ⊥⇒ψ ⊥
+                                         in ⊢-intr (⊢-conj ϕ ψ)
+  MinimalFalse' (ϕ \/ ψ) (f\/f fϕ fψ) = let ⊥⇒ϕ = weaken (λ ()) (MinimalFalse' ϕ fϕ)
+                                            ⊥   = ⊢-ax (here refl)
+                                         in ⊢-intr (⊢-inj0 (⊢-elim ⊥⇒ϕ ⊥))
+
+  MinimalTrue ⊤ t⊤ = ⊢-true
+  MinimalTrue (ϕ ⇒ ψ) (t=>t tϕ tψ) = ⊢-intr (weaken (λ ()) (MinimalTrue ψ tψ))
+  MinimalTrue (ϕ ⇒ ψ) (f=>t fϕ tψ) = ⊢-intr (weaken (λ ()) (MinimalTrue ψ tψ))
+  MinimalTrue (ϕ ⇒ ψ) (f=>f fϕ fψ) = let ϕ⇒⊥ = MinimalFalse ϕ fϕ
+                                         ⊥⇒ψ = MinimalFalse' ψ fψ
+                                      in compose ϕ⇒⊥ ⊥⇒ψ
+  MinimalTrue (ϕ /\ ψ) (t/\t tϕ tψ) = ⊢-conj (MinimalTrue ϕ tϕ) (MinimalTrue ψ tψ)
+  MinimalTrue (ϕ \/ ψ) (t\/t tϕ tψ) = ⊢-inj0 (MinimalTrue ϕ tϕ)
+  MinimalTrue (ϕ \/ ψ) (t\/f tϕ fψ) = ⊢-inj0 (MinimalTrue ϕ tϕ)
+  MinimalTrue (ϕ \/ ψ) (f\/t fϕ tψ) = ⊢-inj1 (MinimalTrue ψ tψ)
 
   -- g
-  GroundTruth : (ϕ : Formula) → Ground ϕ → ([] ⊢ ϕ) ⇔ ([] ⊢c ϕ)
-  GroundTruth ϕ ϕᵍ = record { ⇒ = implication ; ⇐ = converse ϕ ϕᵍ }
+  GroundTruth : {ϕ : Formula} → Ground ϕ → ([] ⊢ ϕ) ⇔ ([] ⊢c ϕ)
+  GroundTruth ϕ = record { ⇒ = implication ; ⇐ = lemma ϕ }
     where
-      converse : (ϕ : Formula) → Ground ϕ → [] ⊢c ϕ → [] ⊢ ϕ
-      converse ϕ ϕᵍ ⊢'ϕ = let ⊢f[⊥]ϕ  = Friedman {ξ = ⊥} ⊢'ϕ
-                           in subst ([] ⊢_) ⊢f[⊥]ϕ (friedman-of-ground ϕ ϕᵍ)
+      lemma : {ϕ : Formula} → Ground ϕ → [] ⊢c ϕ → [] ⊢ ϕ
+      lemma {ϕ} gϕ ⊢cϕ with GValueDec gϕ
+      ... | left  tϕ = MinimalTrue gϕ tϕ
+      ... | right fϕ = let ⊢ϕ⇒⊥  = MinimalFalse gϕ fϕ
+                           ⊢cϕ⇒⊥ = implication ⊢ϕ⇒⊥
+                           ⊢c⊥   = ⊢-elim ⊢cϕ⇒⊥ ⊢cϕ
+                           ⊢ϕ    = Friedman {ξ = ϕ} ⊢c⊥
+                        in ⊢ϕ
 
   -- h
   Equi-Consitency : ([] ⊢ ⊥) ⇔ ([] ⊢c ⊥)
-  Equi-Consitency = GroundTruth ⊥ unit
-
+  Equi-Consitency = GroundTruth ⊥
+  
