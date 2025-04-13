@@ -691,7 +691,7 @@ module Normalisation where
 -}
 module Consistency where
   open ND-minimal using (Equi-Consitency)
-  open Hilbert-System using (Minimal⇒Hilbert)
+  open Hilbert-System using (Minimal⇒Hilbert) renaming (_⊢_ to _⊢h_)
   open Combinatory-Logic using (Term ; O ; S ; K ; 𝕍 ; _·_ ; Pair ; Proj0 ; Proj1 ;
                                 headO ; O·-not-typeable ;
                                 _⊢_~_ ; ⊢-AX ; ⊢-MP ; ⊢-K ; ⊢-S ;
@@ -716,15 +716,15 @@ module Consistency where
   ... | left   headO = bool-contradiction headO ¬neutral-e'
   ... | right ¬headO = O·-not-typeable u ¬headO ⊢u:ABC
 
-
+  hilbert-consistent : ¬ ([] ⊢h ⊥)
+  hilbert-consistent ⊢h⊥ = let ⟨ e , ⊢e:⊥ ⟩  = Hilbert⇒SK ⊢h⊥
+                            in  ⊥-not-inhabitable {e} ⊢e:⊥
+    
   nd-consistent : ¬ ([] ⊢m ⊥)
   nd-consistent ⊢m⊥ = let ⊢h⊥           = Minimal⇒Hilbert ⊢m⊥
-                          ⟨ e , ⊢e:⊥ ⟩  = Hilbert⇒SK ⊢h⊥
-                       in ⊥-not-inhabitable ⊢e:⊥
+                       in hilbert-consistent ⊢h⊥
 
   ndc-consistent : ¬ ([] ⊢c ⊥)
   ndc-consistent ⊢c⊥ = let ndc→nd        = _⇔_.⇐ Equi-Consitency
                            ⊢m⊥           = ndc→nd ⊢c⊥
-                           ⊢h⊥           = Minimal⇒Hilbert ⊢m⊥
-                           ⟨ e , ⊢e:⊥ ⟩  = Hilbert⇒SK ⊢h⊥
-                        in ⊥-not-inhabitable ⊢e:⊥
+                        in nd-consistent ⊢m⊥
