@@ -27,11 +27,10 @@ My solution to the MPRI Proof assistants (PRFA 2-7-2) course project, but in Agd
     - deriving the result that all closed and well-type terms are in the logical relation
     - demonstrating that no term has the bottom type
     - proving the consistency of proof systems
-3. **TODO** Mini projects
-    - simplify proofs
-    - enriching the syntactic constructions of well-formed formulas
-    - showing the decidability of classical natural deduction by defining a sound and complete boolean semantics
-    - using simply typed lambda calculus as proof terms for the minimal logic
-    - showing the decidability of STLC type checking
-    - devising a simulation relation between STLC and combinatory logic
-    - introducing reflection techniques in proofs
+3. **DONE** conjunctions and product types
+4. **WIP** disjunctions and sum types
+5. **TODO** soundness, completeness, and decidability of classical logic natural deduction with respect to boolean semantics.
+6. **TODO** simply typed lambda calculus as proof terms for the minimal logic
+7. **TODO** decidability of simply typed lambda calculus type checking
+8. **TODO** simulate simply typed lambda calculus with typed combinatory logic
+9. **TODO** automated boolean formula equivalence checking via reflection
