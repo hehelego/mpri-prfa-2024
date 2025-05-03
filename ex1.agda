@@ -12,51 +12,52 @@ open import common
 infixr 40 _\/_
 infixr 35 _/\_
 infixr 30 _⇒_
-data Formula : Set where
-  var : ℕ → Formula
-  ⊤ : Formula
-  ⊥ : Formula
-  _⇒_ : Formula → Formula → Formula
-  _/\_ : Formula → Formula → Formula
-  _\/_ : Formula → Formula → Formula
+
+data Formula (N : Nat) : Set where
+  var : Fin N → Formula N
+  ⊤ : Formula N
+  ⊥ : Formula N
+  _⇒_ :  Formula N → Formula N → Formula N
+  _/\_ : Formula N → Formula N → Formula N
+  _\/_ : Formula N → Formula N → Formula N
 
 -- 1.1.d
-data Ground : Formula → Set where
+data Ground {N : Nat} : Formula N → Set where
   ⊤ : Ground ⊤
   ⊥ : Ground ⊥
-  _⇒_ : {ϕ ψ : Formula} → Ground ϕ → Ground ψ → Ground (ϕ ⇒ ψ)
-  _/\_ :{ϕ ψ : Formula} → Ground ϕ → Ground ψ → Ground (ϕ /\ ψ)
-  _\/_ : {ϕ ψ : Formula} → Ground ϕ → Ground ψ → Ground (ϕ \/ ψ)
+  _⇒_ : {ϕ ψ : Formula N} → Ground ϕ → Ground ψ → Ground (ϕ ⇒ ψ)
+  _/\_ : {ϕ ψ : Formula N} → Ground ϕ → Ground ψ → Ground (ϕ /\ ψ)
+  _\/_ : {ϕ ψ : Formula N} → Ground ϕ → Ground ψ → Ground (ϕ \/ ψ)
 
-data GValue : {ϕ : Formula} (gϕ : Ground ϕ) (b : Bool) → Set where
+data GValue {N : Nat} : {ϕ : Formula N} (gϕ : Ground ϕ) (b : Bool) → Set where
   t⊤ : GValue ⊤ True
   f⊥ : GValue ⊥ False
-  t/\t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  t/\t : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ True → GValue gψ True → GValue (gϕ /\ gψ) True
-  t/\f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  t/\f : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ True → GValue gψ False → GValue (gϕ /\ gψ) False
-  f/\t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  f/\t : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ False → GValue gψ True → GValue (gϕ /\ gψ) False
-  f/\f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  f/\f : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ False → GValue gψ False → GValue (gϕ /\ gψ) False
-  t\/t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  t\/t : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ True → GValue gψ True → GValue (gϕ \/ gψ) True
-  t\/f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  t\/f : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ True → GValue gψ False → GValue (gϕ \/ gψ) True
-  f\/t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  f\/t : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ False → GValue gψ True → GValue (gϕ \/ gψ) True
-  f\/f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  f\/f : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ False → GValue gψ False → GValue (gϕ \/ gψ) False
-  t=>t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  t=>t : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ True → GValue gψ True → GValue (gϕ ⇒ gψ) True
-  t=>f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  t=>f : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ True → GValue gψ False → GValue (gϕ ⇒ gψ) False
-  f=>t : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  f=>t : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ False → GValue gψ True → GValue (gϕ ⇒ gψ) True
-  f=>f : {ϕ : Formula} {gϕ : Ground ϕ} {ψ : Formula} {gψ : Ground ψ}
+  f=>f : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ False → GValue gψ False → GValue (gϕ ⇒ gψ) True
 
-GValueDec : {ϕ : Formula} (gϕ : Ground ϕ) → (GValue gϕ True) ⊎ (GValue gϕ False)
+GValueDec : {N : Nat} {ϕ : Formula N} (gϕ : Ground ϕ) → (GValue gϕ True) ⊎ (GValue gϕ False)
 GValueDec ⊤ = left t⊤
 GValueDec ⊥ = right f⊥
 GValueDec (ϕ ⇒  ψ) with GValueDec ϕ | GValueDec ψ
@@ -75,66 +76,79 @@ GValueDec (ϕ \/ ψ) with GValueDec ϕ | GValueDec ψ
 ... | right fϕ | left  tψ = left (f\/t fϕ tψ)
 ... | right fϕ | right fψ = right (f\/f fϕ fψ)
 
+
 infixr 50 ~_
-~_ : Formula → Formula
+~_ : {N : Nat} → Formula N → Formula N
 ~_ = _⇒ ⊥
 
 -- in agda-stdlib (_∷_) has precedence 5
-Context : Set
-Context = List Formula
+Context : Nat → Set
+Context N = List (Formula N)
 
 module ND-classical where
   infix 3 _⊢_
   -- A sequent of classical logic natural deduction
-  data _⊢_ : Context → Formula → Set where
+  data _⊢_ {N : Nat} : Context N → Formula N → Set where
     -- prove true in any context
-    ⊢-true : {Γ : Context} → Γ ⊢ ⊤
+    ⊢-true : {Γ : Context N} → Γ ⊢ ⊤
     -- assumption
-    ⊢-ax : {Γ : Context} {ϕ : Formula} → ϕ ∈ Γ → Γ ⊢ ϕ
+    ⊢-ax : {Γ : Context N} {ϕ : Formula N} → ϕ ∈ Γ → Γ ⊢ ϕ
     -- implication introduction
-    ⊢-intr : {Γ : Context} {ϕ ψ : Formula} → ϕ ∷ Γ ⊢ ψ → Γ ⊢ ϕ ⇒ ψ
+    ⊢-intr : {Γ : Context N} {ϕ ψ : Formula N} → ϕ ∷ Γ ⊢ ψ → Γ ⊢ ϕ ⇒ ψ
     -- implication elimination
-    ⊢-elim : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ϕ → Γ ⊢ ψ
+    ⊢-elim : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ϕ → Γ ⊢ ψ
     -- proof by contradiction
-    ⊢-pbc : {Γ : Context} {ϕ : Formula} → ~ ϕ ∷ Γ ⊢ ⊥ → Γ ⊢ ϕ
+    ⊢-pbc : {Γ : Context N} {ϕ : Formula N} → ~ ϕ ∷ Γ ⊢ ⊥ → Γ ⊢ ϕ
     -- conjunction introduction
-    ⊢-conj : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ψ → Γ ⊢ ϕ /\ ψ
+    ⊢-conj : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ → Γ ⊢ ψ → Γ ⊢ ϕ /\ ψ
     -- conjunction elimination left/right
-    ⊢-proj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
-    ⊢-proj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
+    ⊢-proj0 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
+    ⊢-proj1 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
     -- disjunction introduction left/right
-    ⊢-inj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ϕ \/ ψ
-    ⊢-inj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ψ → Γ ⊢ ϕ \/ ψ
+    ⊢-inj0 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ → Γ ⊢ ϕ \/ ψ
+    ⊢-inj1 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ψ → Γ ⊢ ϕ \/ ψ
     -- disjunction elimination
-    ⊢-case : {Γ : Context} {γ ϕ ψ : Formula} → Γ ⊢ ϕ \/ ψ → Γ ⊢ ϕ ⇒ γ → Γ ⊢ ψ ⇒ γ → Γ ⊢ γ
+    ⊢-case : {Γ : Context N} {γ ϕ ψ : Formula N} → Γ ⊢ ϕ \/ ψ → Γ ⊢ ϕ ⇒ γ → Γ ⊢ ψ ⇒ γ → Γ ⊢ γ
 
+  -- law of excluded middle for classical logic
+  ⊢-lem : {N : Nat} {Γ : Context N} {ϕ : Formula N} → Γ ⊢ ϕ \/ (~ ϕ)
+  ⊢-lem {N} {Γ} {ϕ} = ⊢-pbc ~lem⊢
+    where ~lem⊢ : ~ (ϕ \/ (~ ϕ)) ∷ Γ ⊢ ⊥
+          ~lem⊢ = let ~[ϕ+ϕ']⊢~[ϕ+ϕ']   = ⊢-ax (here refl)
+                      ~[ϕ+ϕ'],ϕ⊢~[ϕ+ϕ'] = ⊢-ax (there (here refl))
+                      ~[ϕ+ϕ'],ϕ⊢ϕ+ϕ'    = ⊢-inj0 (⊢-ax (here refl))
+                      ~[ϕ+ϕ'],ϕ⊢        = ⊢-elim ~[ϕ+ϕ'],ϕ⊢~[ϕ+ϕ'] ~[ϕ+ϕ'],ϕ⊢ϕ+ϕ'
+                      ~[ϕ+ϕ']⊢~ϕ        = ⊢-intr ~[ϕ+ϕ'],ϕ⊢
+                      ~[ϕ+ϕ']⊢ϕ+ϕ'      = ⊢-inj1 ~[ϕ+ϕ']⊢~ϕ
+                      ~[ϕ+ϕ']⊢          = ⊢-elim ~[ϕ+ϕ']⊢~[ϕ+ϕ'] ~[ϕ+ϕ']⊢ϕ+ϕ'
+                   in ~[ϕ+ϕ']⊢
 
   -- b.1
-  example-1 : {Γ : Context} (ϕ : Formula) → Γ ⊢ ϕ ⇒ ϕ
+  example-1 : {N : Nat} {Γ : Context N} (ϕ : Formula N) → Γ ⊢ ϕ ⇒ ϕ
   example-1 ϕ = ⊢-intr (⊢-ax (here refl))
 
   -- b.2
-  example-2 : {Γ : Context} {ϕ : Formula} → ϕ ∷ Γ ⊢ ~ ~ ϕ
+  example-2 : {N : Nat} {Γ : Context N} {ϕ : Formula N} → ϕ ∷ Γ ⊢ ~ ~ ϕ
   example-2 = ⊢-intr let ⊢ϕ⇒⊥ = ⊢-ax (here refl)
                          ⊢ϕ   = ⊢-ax (there (here refl))
                       in ⊢-elim ⊢ϕ⇒⊥ ⊢ϕ
 
   -- b.3
-  example-3 : ~ ~ ⊥ ∷ [] ⊢ ⊥
+  example-3 : {N : Nat} → ~ ~ ⊥ ∷ [] ⊢ ⊥ {N}
   example-3 = let ⊢⊥⇒⊥       = ⊢-intr (⊢-ax (here refl))
                   ⊢~⊥⇒⊥ = ⊢-ax (here refl)
                in ⊢-elim ⊢~⊥⇒⊥ ⊢⊥⇒⊥
 
   -- b.4
   -- double-negation-elimination is non-intuitionistic, need PBC
-  example-4 : {Γ : Context} {ϕ : Formula} → Γ ⊢ ~ ~ ϕ ⇒ ϕ
+  example-4 : {N : Nat} {Γ : Context N} {ϕ : Formula N} → Γ ⊢ ~ ~ ϕ ⇒ ϕ
   example-4 = let ⊢~ϕ  = ⊢-ax (here refl)
                   ⊢~~ϕ = ⊢-ax (there (here refl))
                   ⊢⊥ = ⊢-elim ⊢~~ϕ ⊢~ϕ
                in ⊢-intr (⊢-pbc ⊢⊥)
 
   -- c
-  weaken : {Γ Δ : Context} {ϕ : Formula} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
+  weaken : {N : Nat} {Γ Δ : Context N} {ϕ : Formula N} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
   weaken Γ⊆Δ ⊢-true = ⊢-true
   weaken Γ⊆Δ (⊢-ax ϕ∈Γ) = ⊢-ax (Γ⊆Δ ϕ∈Γ)
   weaken Γ⊆Δ (⊢-intr ϕ,Γ⊢ψ) = let ϕ,Γ⊆ϕ,Δ = ∷-subset Γ⊆Δ in ⊢-intr (weaken ϕ,Γ⊆ϕ,Δ ϕ,Γ⊢ψ)
@@ -156,6 +170,320 @@ module ND-classical where
                                               Δ⊢ψ⇒γ = weaken Γ⊆Δ Γ⊢ψ⇒γ
                                            in ⊢-case Δ⊢ϕ+ψ Δ⊢ϕ⇒γ Δ⊢ψ⇒γ
 
+  
+  Assignment : Nat → Set
+  Assignment N = Fin N → Bool
+
+  -- truth value semantics
+  data Eval {N : Nat} (v : Assignment N) : (ϕ : Formula N) (b : Bool) → Set where
+    t⊤ : Eval v ⊤ True
+    f⊥ : Eval v ⊥ False
+    tvar : {x : Fin N} → v x ≡ True  → Eval v (var x) True
+    fvar : {x : Fin N} → v x ≡ False → Eval v (var x) False
+    t/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ /\ ψ) True 
+    t/\f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ /\ ψ) False
+    f/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ /\ ψ) False
+    f/\f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ /\ ψ) False
+    t\/t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ \/ ψ) True 
+    t\/f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ \/ ψ) True 
+    f\/t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ \/ ψ) True 
+    f\/f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ \/ ψ) False
+    t=>t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ ⇒ ψ) True 
+    t=>f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ ⇒ ψ) False
+    f=>t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ ⇒ ψ) True 
+    f=>f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ ⇒ ψ) True 
+
+  -- the boolean semantics is deterministic
+  Eval-Unique : {N : Nat} {v : Assignment N} {ϕ : Formula N} → Eval v ϕ True → Eval v ϕ False → Empty
+  Eval-Unique (tvar v=t) (fvar v=f) = aux v=t v=f
+    where aux : {b : Bool} → b ≡ True → b ≡ False → Empty
+          aux {True} refl ()
+          aux {False} () refl
+  Eval-Unique (t/\t t₀ t₁) (t/\f t'₀ f'₁) = Eval-Unique t₁ f'₁
+  Eval-Unique (t/\t t₀ t₁) (f/\t f'₀ t'₁) = Eval-Unique t₀ f'₀
+  Eval-Unique (t/\t t₀ t₁) (f/\f f'₀ f'₁) = Eval-Unique t₀ f'₀
+  Eval-Unique (t\/t t₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₀ f'₀
+  Eval-Unique (t\/f t₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₀ f'₀
+  Eval-Unique (f\/t f₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₁ f'₁
+  Eval-Unique (t=>t t₀ t₁) (t=>f t'₀ f'₁) = Eval-Unique t₁ f'₁
+  Eval-Unique (f=>t f₀ t₁) (t=>f t'₀ f'₁) = Eval-Unique t₁ f'₁
+  Eval-Unique (f=>f f₀ f₁) (t=>f t'₀ f'₁) = Eval-Unique t'₀ f₀
+
+
+  -- compute boolean value
+  eval : {N : Nat} (v : Assignment N) (ϕ : Formula N) → Σ (Eval v ϕ)
+  eval v (var x) = aux (v x) refl
+    where aux : (b : Bool) → (v x) ≡ b
+              → Σ (Eval v (var x))
+          aux True  eq = ⟨ True  , tvar eq ⟩
+          aux False eq = ⟨ False , fvar eq ⟩
+  eval v ⊤ = ⟨ True , t⊤ ⟩
+  eval v ⊥ = ⟨ False , f⊥ ⟩
+  eval v (ϕ ⇒  ψ) with eval v ϕ | eval v ψ
+  ... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t=>t tϕ tψ ⟩
+  ... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , t=>f tϕ fψ ⟩
+  ... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , f=>t fϕ tψ ⟩
+  ... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ True  , f=>f fϕ fψ ⟩
+  eval v (ϕ /\ ψ) with eval v ϕ | eval v ψ
+  ... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t/\t tϕ tψ ⟩
+  ... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , t/\f tϕ fψ ⟩
+  ... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ False , f/\t fϕ tψ ⟩
+  ... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , f/\f fϕ fψ ⟩
+  eval v (ϕ \/ ψ) with eval v ϕ | eval v ψ
+  ... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t\/t tϕ tψ ⟩
+  ... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ True  , t\/f tϕ fψ ⟩
+  ... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , f\/t fϕ tψ ⟩
+  ... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , f\/f fϕ fψ ⟩
+
+
+  Sat : {N : Nat} (v : Assignment N) (Γ : Context N) → Set
+  Sat v = All (λ ϕ → Eval v ϕ True)
+
+  infix 3 _⊨_
+  _⊨_ : {N : Nat} (Γ : Context N) (ϕ : Formula N) → Set
+  Γ ⊨ ϕ = (v : Assignment _) → Sat v Γ → Eval v ϕ True
+
+  -- every derivable sequent is a semantical entailment
+  sound : {N : Nat} {Γ : Context N} {ϕ : Formula N} → Γ ⊢ ϕ → Γ ⊨ ϕ
+  sound ⊢-true val sat = t⊤
+  sound (⊢-ax i) val sat = All-∈ sat i
+  sound (⊢-intr {_} {ϕ} {ψ} ϕ⊢ψ) val sat with eval val ϕ 
+  ... | ⟨ True  , tϕ ⟩ = let tψ = sound ϕ⊢ψ val (tϕ ∷ sat) in t=>t tϕ tψ
+  ... | ⟨ False , fϕ ⟩ with eval val ψ
+  ... | ⟨ True  , tψ ⟩ = f=>t fϕ tψ
+  ... | ⟨ False , fψ ⟩ = f=>f fϕ fψ
+  sound (⊢-elim {Γ} {ϕ} {ψ} ⊢ϕ⇒ψ ⊢ϕ) val sat with sound ⊢ϕ val sat | sound ⊢ϕ⇒ψ val sat
+  ... | tϕ' | t=>t tϕ tψ = tψ
+  ... | tϕ' | f=>t fϕ tψ = tψ
+  ... | tϕ' | f=>f fϕ fψ = absurd (Eval-Unique tϕ' fϕ)
+  sound (⊢-pbc {_} {ϕ} ~ϕ⊢) val sat with eval val ϕ
+  ... | ⟨ True  , tϕ ⟩ = tϕ
+  ... | ⟨ False , fϕ ⟩ = let t⊥ = sound ~ϕ⊢ val (f=>f fϕ f⊥ ∷ sat) in absurd (Eval-Unique t⊥ f⊥)
+  sound (⊢-conj ⊢ϕ ⊢ψ) val sat = t/\t (sound ⊢ϕ val sat) (sound ⊢ψ val sat)
+  sound (⊢-proj0 ⊢ϕ·ψ) val sat with sound ⊢ϕ·ψ val sat
+  ... | t/\t ⊨ϕ ⊨ψ = ⊨ϕ
+  sound (⊢-proj1 ⊢ϕ·ψ) val sat with sound ⊢ϕ·ψ val sat
+  ... | t/\t ⊨ϕ ⊨ψ = ⊨ψ
+  sound (⊢-inj0 {_} {ϕ} {ψ} ⊢ϕ) val sat with sound ⊢ϕ val sat | eval val ψ
+  ... | tϕ | ⟨ True  , tψ ⟩ = t\/t tϕ tψ
+  ... | tϕ | ⟨ False , fψ ⟩ = t\/f tϕ fψ
+  sound (⊢-inj1 {_} {ϕ} {ψ} ⊢ψ) val sat with sound ⊢ψ val sat | eval val ϕ
+  ... | tψ | ⟨ True  , tϕ ⟩ = t\/t tϕ tψ
+  ... | tψ | ⟨ False , fϕ ⟩ = f\/t fϕ tψ
+  sound (⊢-case {_} {γ} {ϕ} {ψ} ⊢ϕ+ψ ⊢ϕ⇒γ ⊢ψ⇒γ) val sat
+    with sound ⊢ϕ+ψ val sat | sound ⊢ϕ⇒γ val sat | sound ⊢ψ⇒γ val sat
+  ... | t\/t tϕ _  | t=>t _  tγ | _ = tγ
+  ... | t\/t tϕ _  | f=>t _  tγ | _ = tγ
+  ... | t\/t tϕ _  | f=>f fϕ _  | _ = absurd (Eval-Unique tϕ fϕ)
+  ... | t\/f tϕ _  | t=>t _  tγ | _ = tγ
+  ... | t\/f tϕ _  | f=>t _  tγ | _ = tγ
+  ... | t\/f tϕ _  | f=>f fϕ _  | _ = absurd (Eval-Unique tϕ fϕ)
+  ... | f\/t _ tψ  | _ | t=>t _  tγ = tγ
+  ... | f\/t _ tψ  | _ | f=>t _  tγ = tγ
+  ... | f\/t _ tψ  | _ | f=>f fψ _  = absurd (Eval-Unique tψ fψ)
+
+  build-literal : {N : Nat} → Bool → Fin N → Formula N
+  build-literal True x = var x
+  build-literal False x = ~ (var x)
+
+  Assignment→Variables→Context : {N : Nat} → Assignment N → List (Fin N)→ Context N
+  Assignment→Variables→Context v = map (λ x → build-literal (v x) x)
+  
+  Assignment→Context : {N : Nat} → Assignment N → Context N
+  Assignment→Context {N} v = Assignment→Variables→Context v (enumerate N)
+
+  Assignment-Context-Locate : {N : Nat} (v : Assignment N) (x : Fin N)
+                            → (build-literal (v x) x) ∈ (Assignment→Context v)
+  Assignment-Context-Locate {N} v ⟨ i , i<N ⟩ = ∈-map (enumerate-exhaustive N i i<N)
+
+
+  Truth-Table-Lemma-True  : {N : Nat} (val : Assignment N) (ϕ : Formula N)
+                          → Eval val ϕ True  → (Assignment→Context val) ⊢   ϕ
+  Truth-Table-Lemma-False : {N : Nat} (val : Assignment N) (ϕ : Formula N)
+                          → Eval val ϕ False → (Assignment→Context val) ⊢ ~ ϕ
+
+
+  Truth-Table-Lemma-True v (var x) (tvar vx=t) =
+    let Γ = Assignment→Context v
+        Γ⊢literal = ⊢-ax (Assignment-Context-Locate v x)
+        positive-literal : build-literal (v x) x ≡ build-literal True x
+        positive-literal = cong (λ v → build-literal v x) vx=t
+     in subst (Γ ⊢_) Γ⊢literal positive-literal
+  Truth-Table-Lemma-True val ⊤ t⊤ = ⊢-true
+  Truth-Table-Lemma-True val (ϕ ⇒  ψ) (t=>t tϕ tψ) =
+    let Γ⊢ψ = Truth-Table-Lemma-True val ψ tψ
+        Γ,ϕ⊢ψ = weaken there Γ⊢ψ
+     in ⊢-intr Γ,ϕ⊢ψ
+  Truth-Table-Lemma-True val (ϕ ⇒  ψ) (f=>t fϕ tψ) =
+    let Γ⊢ψ = Truth-Table-Lemma-True val ψ tψ
+        Γ,ϕ⊢ψ = weaken there Γ⊢ψ
+     in ⊢-intr Γ,ϕ⊢ψ
+  Truth-Table-Lemma-True val (ϕ ⇒  ψ) (f=>f fϕ fψ) =
+    let Γ⊢~ϕ      = Truth-Table-Lemma-False val ϕ fϕ
+        Γ,ϕ,~ψ⊢~ϕ = weaken (λ x → there (there x)) Γ⊢~ϕ
+        Γ,ϕ,~ψ⊢ϕ  = ⊢-ax (there (here refl))
+        Γ,ϕ,~ψ⊢   = ⊢-elim Γ,ϕ,~ψ⊢~ϕ Γ,ϕ,~ψ⊢ϕ
+        Γ,ϕ⊢ψ     = ⊢-pbc Γ,ϕ,~ψ⊢
+     in ⊢-intr Γ,ϕ⊢ψ
+  Truth-Table-Lemma-True val (ϕ /\ ψ) (t/\t tϕ tψ) =
+    let Γ⊢ϕ = Truth-Table-Lemma-True val ϕ tϕ
+        Γ⊢ψ = Truth-Table-Lemma-True val ψ tψ
+     in ⊢-conj Γ⊢ϕ Γ⊢ψ 
+  Truth-Table-Lemma-True val (ϕ \/ ψ) (t\/t tϕ tψ) =
+    let Γ⊢ϕ = Truth-Table-Lemma-True val ϕ tϕ
+     in ⊢-inj0 Γ⊢ϕ
+  Truth-Table-Lemma-True val (ϕ \/ ψ) (t\/f tϕ fψ) =
+    let Γ⊢ϕ = Truth-Table-Lemma-True val ϕ tϕ
+     in ⊢-inj0 Γ⊢ϕ
+  Truth-Table-Lemma-True val (ϕ \/ ψ) (f\/t fϕ tψ) =
+    let Γ⊢ψ = Truth-Table-Lemma-True val ψ tψ
+     in ⊢-inj1 Γ⊢ψ
+
+  Truth-Table-Lemma-False v (var x) (fvar vx=f) =
+    let Γ = Assignment→Context v
+        Γ⊢literal = ⊢-ax (Assignment-Context-Locate v x)
+        negative-literal : build-literal (v x) x ≡ build-literal False x
+        negative-literal = cong (λ v → build-literal v x) vx=f
+     in subst (Γ ⊢_) Γ⊢literal negative-literal
+  Truth-Table-Lemma-False val ⊥ f⊥ = ⊢-intr (⊢-ax (here refl))
+  Truth-Table-Lemma-False val (ϕ ⇒  ψ) (t=>f tϕ fψ) =
+    let Γ⊢ϕ       = Truth-Table-Lemma-True  val ϕ tϕ
+        Γ⊢~ψ      = Truth-Table-Lemma-False val ψ fψ
+        Γ,ϕ⇒ψ⊢ϕ   = weaken there Γ⊢ϕ
+        Γ,ϕ⇒ψ⊢~ψ  = weaken there Γ⊢~ψ
+        Γ,ϕ⇒ψ⊢ϕ⇒ψ = ⊢-ax (here refl)
+        Γ,ϕ⇒ψ⊢ψ   = ⊢-elim Γ,ϕ⇒ψ⊢ϕ⇒ψ Γ,ϕ⇒ψ⊢ϕ
+        Γ,ϕ⇒ψ⊢    = ⊢-elim Γ,ϕ⇒ψ⊢~ψ Γ,ϕ⇒ψ⊢ψ
+     in ⊢-intr Γ,ϕ⇒ψ⊢
+  Truth-Table-Lemma-False val (ϕ /\ ψ) (t/\f tϕ fψ) =
+    let Γ⊢~ψ      = Truth-Table-Lemma-False val ψ fψ
+        Γ,ϕ·ψ⊢~ψ  = weaken there Γ⊢~ψ
+        Γ,ϕ·ψ⊢ψ   = ⊢-proj1 (⊢-ax (here refl))
+        Γ,ϕ·ψ⊢    = ⊢-elim Γ,ϕ·ψ⊢~ψ Γ,ϕ·ψ⊢ψ
+     in ⊢-intr Γ,ϕ·ψ⊢
+  Truth-Table-Lemma-False val (ϕ /\ ψ) (f/\t fϕ tψ) =
+    let Γ⊢~ϕ      = Truth-Table-Lemma-False val ϕ fϕ
+        Γ,ϕ·ψ⊢~ϕ  = weaken there Γ⊢~ϕ
+        Γ,ϕ·ψ⊢ϕ   = ⊢-proj0 (⊢-ax (here refl))
+        Γ,ϕ·ψ⊢    = ⊢-elim Γ,ϕ·ψ⊢~ϕ Γ,ϕ·ψ⊢ϕ
+     in ⊢-intr Γ,ϕ·ψ⊢
+  Truth-Table-Lemma-False val (ϕ /\ ψ) (f/\f fϕ fψ) =
+    let Γ⊢~ϕ      = Truth-Table-Lemma-False val ϕ fϕ
+        Γ,ϕ·ψ⊢~ϕ  = weaken there Γ⊢~ϕ
+        Γ,ϕ·ψ⊢ϕ   = ⊢-proj0 (⊢-ax (here refl))
+        Γ,ϕ·ψ⊢    = ⊢-elim Γ,ϕ·ψ⊢~ϕ Γ,ϕ·ψ⊢ϕ
+     in ⊢-intr Γ,ϕ·ψ⊢
+  Truth-Table-Lemma-False val (ϕ \/ ψ) (f\/f fϕ fψ) =
+    let Γ⊢~ϕ     = Truth-Table-Lemma-False val ϕ fϕ
+        Γ⊢~ψ     = Truth-Table-Lemma-False val ψ fψ
+        Γ,ϕ+ψ⊢~ϕ = weaken there Γ⊢~ϕ
+        Γ,ϕ+ψ⊢~ψ = weaken there Γ⊢~ψ
+        Γ,ϕ+ψ⊢   = ⊢-case (⊢-ax (here refl)) Γ,ϕ+ψ⊢~ϕ Γ,ϕ+ψ⊢~ψ
+     in ⊢-intr Γ,ϕ+ψ⊢
+
+  build-assignment : {N : Nat} (picked : List Bool) → length picked ≡ N → Assignment N
+  build-assignment {N} picked refl ⟨ i , i<N ⟩ = let j   = mirror N i
+                                                     j<N = mirror-le i<N
+                                                  in fromJust (picked ! j) (valid-index j<N)
+
+  build-context : {N : Nat} (m : Nat) (picked :  List Bool) → m ≤ N → length picked ≡ m → Context N
+  build-context Z _ _ _ = []
+  build-context (S x) (b ∷ picked) (S<S m<N) refl =
+    let ctx = build-context x picked (n<m→n≤m m<N) refl
+        lit = build-literal b ⟨ x , m<N ⟩
+     in lit ∷ ctx
+
+  build-context-deterministic : {N : Nat} {m : Nat} {picked :  List Bool}
+                              → (le1 le2 : m ≤ N)
+                              → {eq1 eq2 : length picked ≡ m}
+                              → build-context m picked le1 eq1
+                              ≡ build-context m picked le2 eq2
+  build-context-deterministic {N} {m} {picked} le1 le2 {refl} {refl} =
+    cong (λ le → build-context m picked le refl) (<-unique le1 le2)
+
+
+  test : Nat → Set
+  test N = (picked : List Bool) → (l=N : length picked ≡ N)
+         → Assignment→Context (build-assignment picked l=N) ≡ build-context N picked n≤n l=N
+  t3 : test (S (S (S Z)))
+  t4 : test (S (S (S (S Z))))
+  t3 (x ∷ y ∷ z ∷ []) refl = refl
+  t4 (x ∷ y ∷ z ∷ w ∷ []) refl = refl
+
+  -- TODO: prove this key lemma later
+  postulate
+    build-context-equal : {N : Nat} (picked : List Bool) (l=N : length picked ≡ N)
+                        → Assignment→Context (build-assignment picked l=N) ≡ build-context N picked n≤n l=N
+
+  -- completeness for semantically valid formula under the empty context
+  complete' : {N : Nat} (ϕ : Formula N) → [] ⊨ ϕ → [] ⊢ ϕ
+  complete' {N} ϕ ⊨ϕ = solve N Z [] +-neutral-r refl Z<S
+    where
+      Γ⊨ϕ : {Γ : Context N} → Γ ⊨ ϕ
+      Γ⊨ϕ v _ = ⊨ϕ v []
+
+      Assignment→Proof : (v : Assignment N) → (Assignment→Context v) ⊢ ϕ
+      Assignment→Proof v = Truth-Table-Lemma-True v ϕ (Γ⊨ϕ v [])
+
+      solve : (n m : Nat)
+            → (picked : List Bool)
+            → (inv1 : (n + m) ≡ N)
+            → (inv2 : length picked ≡ m)
+            → (inv3 : m ≤ N)
+            → build-context m picked inv3 inv2 ⊢ ϕ
+      solve Z m picked refl refl inv3 =
+        let Γ = build-context N picked inv3 refl
+            Γ' = build-context N picked n≤n refl
+
+            assign : Assignment N
+            assign = build-assignment picked refl
+
+            Γ'' = Assignment→Context assign
+            Γ''⊢ϕ = Assignment→Proof assign
+
+            Γ''=Γ' : Γ'' ≡ Γ'
+            Γ''=Γ' = build-context-equal {N} picked refl
+
+            Γ'=Γ : build-context N picked n≤n refl
+                 ≡ build-context N picked inv3 refl
+            Γ'=Γ = build-context-deterministic n≤n inv3
+
+         in subst (_⊢ ϕ) Γ''⊢ϕ (trans Γ''=Γ' Γ'=Γ)
+      solve (S n) m picked refl refl inv3 =
+        let Γ = build-context m picked inv3 refl
+            x = var ⟨ m , add-monotone ⟩
+            inv1' = +-suc-shift
+            inv2' = refl
+            inv3' = S<S add-monotone
+
+            Γ,x⊢ϕ  = solve n (S m) (True  ∷ picked) inv1' inv2' inv3'
+            Γ,x'⊢ϕ = solve n (S m) (False ∷ picked) inv1' inv2' inv3'
+
+            eq = build-context-deterministic (n<m→n≤m add-monotone) inv3
+
+            Γ,x⊢ϕ₀  = subst (_⊢ ϕ) Γ,x⊢ϕ  (cong (  x ∷_) eq)
+            Γ,x'⊢ϕ₀ = subst (_⊢ ϕ) Γ,x'⊢ϕ (cong (~ x ∷_) eq)
+         in ⊢-case (⊢-lem {N} {Γ} {x})
+                   (⊢-intr Γ,x⊢ϕ₀)
+                   (⊢-intr Γ,x'⊢ϕ₀)
+
+  -- every semantical entailment is derivable
+  complete : {N : Nat} {Γ : Context N} {ϕ : Formula N} → Γ ⊨ ϕ → Γ ⊢ ϕ
+  complete {N} {[]} {ϕ} ⊨ϕ = complete' ϕ ⊨ϕ
+  complete {N} {ϕ ∷ Γ} {ψ} Γ⊨ψ =
+    let Γ⊢ϕ⇒ψ   = complete {N} {Γ} {ϕ ⇒ ψ} Γ⊨ϕ⇒ψ
+        Γ,ϕ⊢ϕ⇒ψ = weaken there Γ⊢ϕ⇒ψ
+        Γ,ϕ⊢ϕ   = ⊢-ax (here refl)
+        Γ,ϕ⊢ψ   = ⊢-elim Γ,ϕ⊢ϕ⇒ψ Γ,ϕ⊢ϕ
+     in Γ,ϕ⊢ψ
+    where Γ⊨ϕ⇒ψ : Γ ⊨ ϕ ⇒ ψ
+          Γ⊨ϕ⇒ψ val sat with eval val ϕ 
+          ... | ⟨ True  , tϕ ⟩ = let tψ = Γ⊨ψ val (tϕ ∷ sat) in t=>t tϕ tψ
+          ... | ⟨ False , fϕ ⟩ with eval val ψ
+          ... | ⟨ False , fψ ⟩ = f=>f fϕ fψ
+          ... | ⟨ True  , tψ ⟩ = f=>t fϕ tψ
+
+
 {-
 -- ### Sub Section 1.2 minimal logic
 -}
@@ -163,25 +491,25 @@ module ND-classical where
 module ND-minimal where
   infix 3 _⊢_
   -- A sequent of classical logic natural deduction
-  data _⊢_ : Context → Formula → Set where
+  data _⊢_ {N : Nat} : Context N → Formula N → Set where
     -- prove true in any context
-    ⊢-true : {Γ : Context} → Γ ⊢ ⊤
+    ⊢-true : {Γ : Context N} → Γ ⊢ ⊤
     -- assumption
-    ⊢-ax : {Γ : Context} {ϕ : Formula} → ϕ ∈ Γ → Γ ⊢ ϕ
+    ⊢-ax : {Γ : Context N} {ϕ : Formula N} → ϕ ∈ Γ → Γ ⊢ ϕ
     -- implication introduction
-    ⊢-intr : {Γ : Context} {ϕ ψ : Formula} → ϕ ∷ Γ ⊢ ψ → Γ ⊢ ϕ ⇒ ψ
+    ⊢-intr : {Γ : Context N} {ϕ ψ : Formula N} → ϕ ∷ Γ ⊢ ψ → Γ ⊢ ϕ ⇒ ψ
     -- implication elimination
-    ⊢-elim : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ϕ → Γ ⊢ ψ
+    ⊢-elim : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ϕ → Γ ⊢ ψ
     -- conjunction introduction
-    ⊢-conj : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ψ → Γ ⊢ ϕ /\ ψ
+    ⊢-conj : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ → Γ ⊢ ψ → Γ ⊢ ϕ /\ ψ
     -- conjunction elimination left/right
-    ⊢-proj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
-    ⊢-proj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
+    ⊢-proj0 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ϕ
+    ⊢-proj1 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ /\ ψ → Γ ⊢ ψ
     -- disjunction introduction left/right
-    ⊢-inj0 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ϕ → Γ ⊢ ϕ \/ ψ
-    ⊢-inj1 : {Γ : Context} {ϕ ψ : Formula} → Γ ⊢ ψ → Γ ⊢ ϕ \/ ψ
+    ⊢-inj0 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ϕ → Γ ⊢ ϕ \/ ψ
+    ⊢-inj1 : {Γ : Context N} {ϕ ψ : Formula N} → Γ ⊢ ψ → Γ ⊢ ϕ \/ ψ
     -- disjunction elimination
-    ⊢-case : {Γ : Context} {γ ϕ ψ : Formula} → Γ ⊢ ϕ \/ ψ → Γ ⊢ ϕ ⇒ γ → Γ ⊢ ψ ⇒ γ → Γ ⊢ γ
+    ⊢-case : {Γ : Context N} {γ ϕ ψ : Formula N} → Γ ⊢ ϕ \/ ψ → Γ ⊢ ϕ ⇒ γ → Γ ⊢ ψ ⇒ γ → Γ ⊢ γ
 
   open ND-classical using (⊢-true ; ⊢-ax ;
                            ⊢-intr ; ⊢-elim ;
@@ -192,7 +520,7 @@ module ND-minimal where
 
 
   -- b
-  weaken : {Γ Δ : Context} {ϕ : Formula} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
+  weaken : {N : Nat} {Γ Δ : Context N} {ϕ : Formula N} → Γ ⊆ Δ → Γ ⊢ ϕ → Δ ⊢ ϕ
   weaken Γ⊆Δ ⊢-true = ⊢-true
   weaken Γ⊆Δ (⊢-ax ϕ∈Γ) = ⊢-ax (Γ⊆Δ ϕ∈Γ)
   weaken Γ⊆Δ (⊢-intr ϕ,Γ⊢ψ) = let ϕ,Γ⊆ϕ,Δ = ∷-subset Γ⊆Δ in ⊢-intr (weaken ϕ,Γ⊆ϕ,Δ ϕ,Γ⊢ψ)
@@ -212,7 +540,7 @@ module ND-minimal where
                                            in ⊢-case Δ⊢ϕ+ψ Δ⊢ϕ⇒γ Δ⊢ψ⇒γ
 
   -- c
-  implication : {Γ : Context} {ϕ : Formula} → Γ ⊢ ϕ → Γ ⊢c ϕ
+  implication : {N : Nat} {Γ : Context N} {ϕ : Formula N} → Γ ⊢ ϕ → Γ ⊢c ϕ
   implication ⊢-true = ⊢-true
   implication (⊢-ax x) = ⊢-ax x
   implication (⊢-intr ϕ,Γ⊢ψ) = let ϕ,Γ⊢'ψ = implication ϕ,Γ⊢ψ in ⊢-intr ϕ,Γ⊢'ψ
@@ -232,7 +560,7 @@ module ND-minimal where
                                             in ⊢-case Γ⊢'ϕ+ψ Γ⊢'ϕ⇒γ Γ⊢'ψ⇒γ
 
   -- d
-  friedman[_] : Formula → Formula → Formula
+  friedman[_] : {N : Nat} → Formula N → Formula N → Formula N
   friedman[ ξ ] (var x) = ((var x) ⇒ ξ) ⇒ ξ
   friedman[ ξ ] ⊤ = ⊤
   friedman[ ξ ] ⊥ = ξ
@@ -241,7 +569,8 @@ module ND-minimal where
   friedman[ ξ ] (ϕ \/ ψ) = (((friedman[ ξ ] ϕ) \/ (friedman[ ξ ] ψ)) ⇒ ξ) ⇒ ξ
 
   -- e
-  DNE-Friedman : {Γ : Context} {ξ : Formula} (ϕ : Formula) → Γ ⊢ friedman[ ξ ] (~ ~ ϕ ⇒ ϕ)
+  DNE-Friedman : {N : Nat} {Γ : Context N} {ξ : Formula N} (ϕ : Formula N)
+               → Γ ⊢ friedman[ ξ ] (~ ~ ϕ ⇒ ϕ)
   DNE-Friedman (var x) = let s5 = ⊢-ax (there (here refl))
                              s4 = ⊢-elim (⊢-ax (here refl)) s5
                              s3 = ⊢-intr s4
@@ -285,12 +614,13 @@ module ND-minimal where
                               s0 = ⊢-intr s1
                            in ⊢-intr s0
 
-  PBC-Friedman : {Γ : Context} {ξ ϕ : Formula} → friedman[ ξ ] (~ ϕ) ∷ Γ ⊢ friedman[ ξ ] ⊥ → Γ ⊢ friedman[ ξ ] ϕ
+  PBC-Friedman : {N : Nat} {Γ : Context N} {ξ ϕ : Formula N}
+               → friedman[ ξ ] (~ ϕ) ∷ Γ ⊢ friedman[ ξ ] ⊥ → Γ ⊢ friedman[ ξ ] ϕ
   PBC-Friedman {ϕ = ϕ} ~ϕ⊢ = let ⊢~~ϕ = ⊢-intr ~ϕ⊢
                                  dne  = DNE-Friedman ϕ
                               in ⊢-elim dne ⊢~~ϕ
 
-  compose : {Γ : Context} {ϕ ψ γ : Formula} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ψ ⇒ γ → Γ ⊢ ϕ ⇒ γ
+  compose : {N : Nat} {Γ : Context N} {ϕ ψ γ : Formula N} → Γ ⊢ ϕ ⇒ ψ → Γ ⊢ ψ ⇒ γ → Γ ⊢ ϕ ⇒ γ
   compose ⊢ϕ⇒ψ ⊢ψ⇒γ = let ϕ⊢ψ⇒γ = weaken there ⊢ψ⇒γ
                           ϕ⊢ϕ⇒ψ = weaken there ⊢ϕ⇒ψ
                           ϕ⊢ϕ = ⊢-ax (here refl)
@@ -300,7 +630,7 @@ module ND-minimal where
                        in ⊢ϕ⇒γ
 
   -- f
-  Friedman : {Γ : Context} {ϕ ξ : Formula} → Γ ⊢c ϕ → (map friedman[ ξ ] Γ) ⊢ friedman[ ξ ] ϕ
+  Friedman : {N : Nat} {Γ : Context N} {ϕ ξ : Formula N} → Γ ⊢c ϕ → (map friedman[ ξ ] Γ) ⊢ friedman[ ξ ] ϕ
   Friedman ⊢-true = ⊢-true
   Friedman (⊢-ax ϕ∈Γ) = ⊢-ax (∈-map ϕ∈Γ)
   Friedman (⊢-intr ⊢ϕ) = ⊢-intr (Friedman ⊢ϕ)
@@ -338,7 +668,7 @@ module ND-minimal where
         dne-γ = DNE-Friedman γ
      in ⊢-elim dne-γ ⊢'~~γ
 
-  GroundTranslationGround : {ϕ : Formula} (gϕ : Ground ϕ) → Ground (friedman[ ⊥ ] ϕ)
+  GroundTranslationGround : {N : Nat} {ϕ : Formula N} (gϕ : Ground ϕ) → Ground (friedman[ ⊥ ] ϕ)
   GroundTranslationGround ⊤ = ⊤
   GroundTranslationGround ⊥ = ⊥
   GroundTranslationGround (ϕ ⇒ ψ) = let gϕ = GroundTranslationGround ϕ
@@ -352,9 +682,9 @@ module ND-minimal where
                                       in ((gϕ \/ gψ) ⇒ ⊥) ⇒ ⊥
 
 
-  MinimalFalse : {ϕ : Formula} (gϕ : Ground ϕ) → GValue gϕ False → [] ⊢ ϕ ⇒ ⊥
-  MinimalFalse' : {ϕ : Formula} (gϕ : Ground ϕ) → GValue gϕ False → [] ⊢ ⊥ ⇒ ϕ
-  MinimalTrue : {ϕ : Formula} (gϕ : Ground ϕ) → GValue gϕ True → [] ⊢ ϕ
+  MinimalFalse  : {N : Nat} {ϕ : Formula N} (gϕ : Ground ϕ) → GValue gϕ False → [] ⊢ ϕ ⇒ ⊥
+  MinimalFalse' : {N : Nat} {ϕ : Formula N} (gϕ : Ground ϕ) → GValue gϕ False → [] ⊢ ⊥ ⇒ ϕ
+  MinimalTrue   : {N : Nat} {ϕ : Formula N} (gϕ : Ground ϕ) → GValue gϕ True → [] ⊢ ϕ
 
   MinimalFalse ⊥ v = ⊢-intr (⊢-ax (here refl))
   MinimalFalse (ϕ ⇒  ψ) (t=>f tϕ fψ) =
@@ -409,10 +739,10 @@ module ND-minimal where
   MinimalTrue (ϕ \/ ψ) (f\/t fϕ tψ) = ⊢-inj1 (MinimalTrue ψ tψ)
 
   -- g
-  GroundTruth : {ϕ : Formula} → Ground ϕ → ([] ⊢ ϕ) ⇔ ([] ⊢c ϕ)
-  GroundTruth ϕ = record { ⇒ = implication ; ⇐ = lemma ϕ }
+  GroundTruth : {N : Nat} {ϕ : Formula N} → Ground ϕ → ([] ⊢ ϕ) ⇔ ([] ⊢c ϕ)
+  GroundTruth {N} ϕ = record { ⇒ = implication ; ⇐ = lemma ϕ }
     where
-      lemma : {ϕ : Formula} → Ground ϕ → [] ⊢c ϕ → [] ⊢ ϕ
+      lemma : {ϕ : Formula N} → Ground ϕ → [] ⊢c ϕ → [] ⊢ ϕ
       lemma {ϕ} gϕ ⊢cϕ with GValueDec gϕ
       ... | left  tϕ = MinimalTrue gϕ tϕ
       ... | right fϕ = let ⊢ϕ⇒⊥  = MinimalFalse gϕ fϕ
@@ -422,6 +752,5 @@ module ND-minimal where
                         in ⊢ϕ
 
   -- h
-  Equi-Consitency : ([] ⊢ ⊥) ⇔ ([] ⊢c ⊥)
+  Equi-Consitency : {N : Nat} → ([] ⊢ ⊥ {N}) ⇔ ([] ⊢c ⊥)
   Equi-Consitency = GroundTruth ⊥
-  
