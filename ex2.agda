@@ -246,7 +246,7 @@ module Combinatory-Logic where
   -- a
   data _⊢_~_ {N : Nat} (Γ : Context N) : Term → Formula N → Set where
     ⊢-O : Γ ⊢ O ~ ⊤
-    ⊢-AX : {n : Nat} {ϕ : Formula N} → (Γ ! n) ≡ Just ϕ → Γ ⊢ 𝕍 n ~ ϕ
+    ⊢-AX : {n : Nat} {ϕ : Formula N} → Γ ! n ≡ Just ϕ → Γ ⊢ 𝕍 n ~ ϕ
     ⊢-MP : {u v : Term} {ϕ ψ : Formula N} → Γ ⊢ u ~ ϕ ⇒ ψ → Γ ⊢ v ~ ϕ → Γ ⊢ u · v ~ ψ
     ⊢-K : {ϕ ψ : Formula N} → Γ ⊢ K ~ ϕ ⇒ ψ ⇒ ϕ
     ⊢-S : {ϕ ψ γ : Formula N} → Γ ⊢ S ~ (ϕ ⇒ ψ ⇒ γ) ⇒ (ϕ ⇒ ψ) ⇒ ϕ ⇒ γ
@@ -296,7 +296,7 @@ module Combinatory-Logic where
   SK⇒Hilbert ⟨ Case , ⊢-Case ⟩ = ⊢-CASE
 
   -- b
-  Hilbert⇔SK : {ϕ : Formula N} → (Σ (λ e → Γ ⊢ e ~ ϕ)) ⇔ (Γ ⊢' ϕ)
+  Hilbert⇔SK : {ϕ : Formula N} → (Σ λ e → Γ ⊢ e ~ ϕ) ⇔ (Γ ⊢' ϕ)
   Hilbert⇔SK = record { ⇒ = SK⇒Hilbert ; ⇐ = Hilbert⇒SK }
 
   -- c
@@ -451,7 +451,7 @@ module Combinatory-Logic where
   neutral-conjunction-is-pair : {e : Term} {ϕ ψ : Formula N}
                               → neutral e ≡ False
                               → [] ⊢ e ~ ϕ /\ ψ
-                              → Σ (λ x → Σ (λ y → e ≡ (Pair · x · y)))
+                              → Σ (λ x → Σ λ y → e ≡ Pair · x · y)
   neutral-conjunction-is-pair {N} {e · x · y · z} neu (⊢-MP (⊢-MP (⊢-MP e:A x:t1) y:t2) z:t3)
     = let headO-e = neutral→headO e x y z neu
        in absurd (O·-not-typeable e headO-e e:A)
@@ -461,7 +461,7 @@ module Combinatory-Logic where
   neutral-disjunction-constructors : {e : Term} {ϕ ψ : Formula N}
                                    → neutral e ≡ False
                                    → [] ⊢ e ~ ϕ \/ ψ
-                                   → Σ (λ x → e ≡ (Inj0 · x)) ⊎ Σ (λ y → e ≡ (Inj1 · y))
+                                   → Σ (λ x → e ≡ Inj0 · x) ⊎ Σ (λ y → e ≡ Inj1 · y)
   neutral-disjunction-constructors {N} {Inj0 · x} neu (⊢-MP ⊢-Inj0 x:ϕ) = left  ⟨ x , refl ⟩
   neutral-disjunction-constructors {N} {Inj1 · y} neu (⊢-MP ⊢-Inj1 y:ψ) = right ⟨ y , refl ⟩
   neutral-disjunction-constructors {N} {O · u · v} neu (⊢-MP (⊢-MP () u:A) v:B)
@@ -500,7 +500,7 @@ module Combinatory-Logic where
             → [] ⊢ v ~ ϕ
             → neutral u ≡ False
             → neutral v ≡ False
-            → Σ ((u · v) ≻_) ⊎ neutral (u · v) ≡ False
+            → Σ (u · v ≻_) ⊎ neutral (u · v) ≡ False
       lemma O _ _ _ _ _ = right refl
       lemma S _ _ _ _ _ = right refl
       lemma K _ _ _ _ _ = right refl
@@ -566,8 +566,8 @@ module Normalisation where
   ⊨ e ~ var n = SN≻ e
   ⊨ e ~ ϕ ⇒ ψ = {x : Term} → ⊨ x ~ ϕ → ⊨ e · x ~ ψ
   ⊨ e ~ ϕ /\ ψ = (⊨ Proj0 · e ~ ϕ) × (⊨ Proj1 · e ~ ψ)
-  ⊨ e ~ ϕ \/ ψ = ({e' : Term} → e ≻* e' → neutral e' ≡ False → Σ λ { x → (e' ≡ (Inj0 · x)) × (⊨ x ~ ϕ)})
-               ⊎ ({e' : Term} → e ≻* e' → neutral e' ≡ False → Σ λ { y → (e' ≡ (Inj1 · y)) × (⊨ y ~ ψ)})
+  ⊨ e ~ ϕ \/ ψ = ({e' : Term} → e ≻* e' → neutral e' ≡ False → Σ λ { x → e' ≡ Inj0 · x × ⊨ x ~ ϕ })
+               ⊎ ({e' : Term} → e ≻* e' → neutral e' ≡ False → Σ λ { y → e' ≡ Inj1 · y × ⊨ y ~ ψ })
   -- This won't work: ∀ γ {f g} → ⊨ f ~ ϕ ⇒ γ → ⊨ g ~ ψ ⇒ γ → ⊨ Case · e · f · g ~ γ
   -- It is not well-founded
   -- instantiate γ = ϕ \/ ψ and we will get a loop
@@ -776,7 +776,7 @@ module Normalisation where
   
   -- theorem 4: syntactically well-typed implies semantically well-typed
   ⊢→⊨ : {Γ : Context N} {e : Term} {ϕ : Formula N}
-      → ({n : Nat} {ϕ : Formula N} → (Γ ! n) ≡ Just ϕ → ⊨ 𝕍 n ~ ϕ)
+      → ({n : Nat} {ϕ : Formula N} → Γ ! n ≡ Just ϕ → ⊨ 𝕍 n ~ ϕ)
       → Γ ⊢ e ~ ϕ
       → ⊨ e ~ ϕ
   ⊢→⊨ {N} {Γ} {𝕍 n} {ϕ}                             f (⊢-AX x) = f x

@@ -57,7 +57,7 @@ data GValue {N : Nat} : {ϕ : Formula N} (gϕ : Ground ϕ) (b : Bool) → Set wh
   f=>f : {ϕ : Formula N} {gϕ : Ground ϕ} {ψ : Formula N} {gψ : Ground ψ}
        → GValue gϕ False → GValue gψ False → GValue (gϕ ⇒ gψ) True
 
-GValueDec : {N : Nat} {ϕ : Formula N} (gϕ : Ground ϕ) → (GValue gϕ True) ⊎ (GValue gϕ False)
+GValueDec : {N : Nat} {ϕ : Formula N} (gϕ : Ground ϕ) → GValue gϕ True ⊎ GValue gϕ False
 GValueDec ⊤ = left t⊤
 GValueDec ⊥ = right f⊥
 GValueDec (ϕ ⇒  ψ) with GValueDec ϕ | GValueDec ψ
@@ -75,6 +75,70 @@ GValueDec (ϕ \/ ψ) with GValueDec ϕ | GValueDec ψ
 ... | left  tϕ | right fψ = left (t\/f tϕ fψ)
 ... | right fϕ | left  tψ = left (f\/t fϕ tψ)
 ... | right fϕ | right fψ = right (f\/f fϕ fψ)
+
+
+Assignment : Nat → Set
+Assignment N = Fin N → Bool
+
+-- truth value semantics
+data Eval {N : Nat} (v : Assignment N) : (ϕ : Formula N) (b : Bool) → Set where
+  t⊤ : Eval v ⊤ True
+  f⊥ : Eval v ⊥ False
+  tvar : {x : Fin N} → v x ≡ True  → Eval v (var x) True
+  fvar : {x : Fin N} → v x ≡ False → Eval v (var x) False
+  t/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ /\ ψ) True 
+  t/\f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ /\ ψ) False
+  f/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ /\ ψ) False
+  f/\f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ /\ ψ) False
+  t\/t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ \/ ψ) True 
+  t\/f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ \/ ψ) True 
+  f\/t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ \/ ψ) True 
+  f\/f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ \/ ψ) False
+  t=>t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ ⇒ ψ) True 
+  t=>f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ ⇒ ψ) False
+  f=>t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ ⇒ ψ) True 
+  f=>f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ ⇒ ψ) True 
+
+-- the boolean semantics is deterministic
+Eval-Unique : {N : Nat} {v : Assignment N} {ϕ : Formula N} → Eval v ϕ True → Eval v ϕ False → Empty
+Eval-Unique (tvar v=t) (fvar v=f) = aux v=t v=f
+  where aux : {b : Bool} → b ≡ True → b ≡ False → Empty
+        aux {True} refl ()
+        aux {False} () refl
+Eval-Unique (t/\t t₀ t₁) (t/\f t'₀ f'₁) = Eval-Unique t₁ f'₁
+Eval-Unique (t/\t t₀ t₁) (f/\t f'₀ t'₁) = Eval-Unique t₀ f'₀
+Eval-Unique (t/\t t₀ t₁) (f/\f f'₀ f'₁) = Eval-Unique t₀ f'₀
+Eval-Unique (t\/t t₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₀ f'₀
+Eval-Unique (t\/f t₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₀ f'₀
+Eval-Unique (f\/t f₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₁ f'₁
+Eval-Unique (t=>t t₀ t₁) (t=>f t'₀ f'₁) = Eval-Unique t₁ f'₁
+Eval-Unique (f=>t f₀ t₁) (t=>f t'₀ f'₁) = Eval-Unique t₁ f'₁
+Eval-Unique (f=>f f₀ f₁) (t=>f t'₀ f'₁) = Eval-Unique t'₀ f₀
+
+
+-- compute boolean value
+eval : {N : Nat} (v : Assignment N) (ϕ : Formula N) → Σ (Eval v ϕ)
+eval v (var x) = aux (v x) refl
+  where aux : (b : Bool) → v x ≡ b → Σ (Eval v (var x))
+        aux True  eq = ⟨ True  , tvar eq ⟩
+        aux False eq = ⟨ False , fvar eq ⟩
+eval v ⊤ = ⟨ True , t⊤ ⟩
+eval v ⊥ = ⟨ False , f⊥ ⟩
+eval v (ϕ ⇒  ψ) with eval v ϕ | eval v ψ
+... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t=>t tϕ tψ ⟩
+... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , t=>f tϕ fψ ⟩
+... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , f=>t fϕ tψ ⟩
+... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ True  , f=>f fϕ fψ ⟩
+eval v (ϕ /\ ψ) with eval v ϕ | eval v ψ
+... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t/\t tϕ tψ ⟩
+... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , t/\f tϕ fψ ⟩
+... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ False , f/\t fϕ tψ ⟩
+... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , f/\f fϕ fψ ⟩
+eval v (ϕ \/ ψ) with eval v ϕ | eval v ψ
+... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t\/t tϕ tψ ⟩
+... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ True  , t\/f tϕ fψ ⟩
+... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , f\/t fϕ tψ ⟩
+... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , f\/f fϕ fψ ⟩
 
 
 infixr 50 ~_
@@ -171,70 +235,6 @@ module ND-classical where
                                            in ⊢-case Δ⊢ϕ+ψ Δ⊢ϕ⇒γ Δ⊢ψ⇒γ
 
   
-  Assignment : Nat → Set
-  Assignment N = Fin N → Bool
-
-  -- truth value semantics
-  data Eval {N : Nat} (v : Assignment N) : (ϕ : Formula N) (b : Bool) → Set where
-    t⊤ : Eval v ⊤ True
-    f⊥ : Eval v ⊥ False
-    tvar : {x : Fin N} → v x ≡ True  → Eval v (var x) True
-    fvar : {x : Fin N} → v x ≡ False → Eval v (var x) False
-    t/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ /\ ψ) True 
-    t/\f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ /\ ψ) False
-    f/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ /\ ψ) False
-    f/\f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ /\ ψ) False
-    t\/t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ \/ ψ) True 
-    t\/f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ \/ ψ) True 
-    f\/t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ \/ ψ) True 
-    f\/f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ \/ ψ) False
-    t=>t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ ⇒ ψ) True 
-    t=>f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ ⇒ ψ) False
-    f=>t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ ⇒ ψ) True 
-    f=>f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ False → Eval v (ϕ ⇒ ψ) True 
-
-  -- the boolean semantics is deterministic
-  Eval-Unique : {N : Nat} {v : Assignment N} {ϕ : Formula N} → Eval v ϕ True → Eval v ϕ False → Empty
-  Eval-Unique (tvar v=t) (fvar v=f) = aux v=t v=f
-    where aux : {b : Bool} → b ≡ True → b ≡ False → Empty
-          aux {True} refl ()
-          aux {False} () refl
-  Eval-Unique (t/\t t₀ t₁) (t/\f t'₀ f'₁) = Eval-Unique t₁ f'₁
-  Eval-Unique (t/\t t₀ t₁) (f/\t f'₀ t'₁) = Eval-Unique t₀ f'₀
-  Eval-Unique (t/\t t₀ t₁) (f/\f f'₀ f'₁) = Eval-Unique t₀ f'₀
-  Eval-Unique (t\/t t₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₀ f'₀
-  Eval-Unique (t\/f t₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₀ f'₀
-  Eval-Unique (f\/t f₀ t₁) (f\/f f'₀ f'₁) = Eval-Unique t₁ f'₁
-  Eval-Unique (t=>t t₀ t₁) (t=>f t'₀ f'₁) = Eval-Unique t₁ f'₁
-  Eval-Unique (f=>t f₀ t₁) (t=>f t'₀ f'₁) = Eval-Unique t₁ f'₁
-  Eval-Unique (f=>f f₀ f₁) (t=>f t'₀ f'₁) = Eval-Unique t'₀ f₀
-
-
-  -- compute boolean value
-  eval : {N : Nat} (v : Assignment N) (ϕ : Formula N) → Σ (Eval v ϕ)
-  eval v (var x) = aux (v x) refl
-    where aux : (b : Bool) → (v x) ≡ b
-              → Σ (Eval v (var x))
-          aux True  eq = ⟨ True  , tvar eq ⟩
-          aux False eq = ⟨ False , fvar eq ⟩
-  eval v ⊤ = ⟨ True , t⊤ ⟩
-  eval v ⊥ = ⟨ False , f⊥ ⟩
-  eval v (ϕ ⇒  ψ) with eval v ϕ | eval v ψ
-  ... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t=>t tϕ tψ ⟩
-  ... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , t=>f tϕ fψ ⟩
-  ... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , f=>t fϕ tψ ⟩
-  ... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ True  , f=>f fϕ fψ ⟩
-  eval v (ϕ /\ ψ) with eval v ϕ | eval v ψ
-  ... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t/\t tϕ tψ ⟩
-  ... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , t/\f tϕ fψ ⟩
-  ... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ False , f/\t fϕ tψ ⟩
-  ... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , f/\f fϕ fψ ⟩
-  eval v (ϕ \/ ψ) with eval v ϕ | eval v ψ
-  ... | ⟨ True  , tϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , t\/t tϕ tψ ⟩
-  ... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ True  , t\/f tϕ fψ ⟩
-  ... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , f\/t fϕ tψ ⟩
-  ... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , f\/f fϕ fψ ⟩
-
 
   Sat : {N : Nat} (v : Assignment N) (Γ : Context N) → Set
   Sat v = All (λ ϕ → Eval v ϕ True)
