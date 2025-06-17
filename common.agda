@@ -29,6 +29,11 @@ fmap : {A B : Set} (f : A → B) → Maybe A → Maybe B
 fmap f (Just a) = Just (f a)
 fmap f Nothing = Nothing
 
+fmap2 : {A B C : Set} (f : A → B → C) → Maybe A → Maybe B → Maybe C
+fmap2 f (Just a) (Just b) = Just (f a b)
+fmap2 f _ Nothing = Nothing
+fmap2 f Nothing _ = Nothing
+
 IsJust : {A : Set} → Maybe A → Set
 IsJust (Just _) = Unit
 IsJust Nothing = Empty
@@ -96,13 +101,17 @@ Z - m = Z
 S n - Z = S n
 S n - S m = n - m
 
-+-neutral-r : {n : Nat} → n + Z ≡ n
-+-neutral-r {Z} = refl
-+-neutral-r {S n} = cong S +-neutral-r
++-neutral-r : (n : Nat) → n + Z ≡ n
++-neutral-r Z = refl
++-neutral-r (S n) = cong S (+-neutral-r n)
 
 +-suc-shift : {n m : Nat} → n + S m ≡ S (n + m)
 +-suc-shift {Z} = refl
 +-suc-shift {S n} = cong S +-suc-shift
+
++-comm : {n m : Nat} → n + m ≡ m + n
++-comm {n} {Z} = +-neutral-r n
++-comm {n} {S m} = trans +-suc-shift (cong S (+-comm {n} {m}))
 
 n-n=Z : {n : Nat} → n - n ≡ Z
 n-n=Z {Z} = refl
@@ -231,9 +240,9 @@ _!_ : {A : Set} → List A → Nat → Maybe A
 (x ∷ xs) ! Z = Just x
 (x ∷ xs) ! S n = xs ! n
 
-valid-index : {A : Set} {xs : List A} {n : Nat} (n<N : n < length xs) → IsJust (xs ! n)
-valid-index {xs = x ∷ xs} {Z} n<N = unit
-valid-index {xs = x ∷ xs} {S N} (S<S n<N) = valid-index n<N
+valid-index : {A : Set} (xs : List A) {n : Nat} (n<N : n < length xs) → IsJust (xs ! n)
+valid-index (x ∷ xs) {Z} n<N = unit
+valid-index (x ∷ xs) {S N} (S<S n<N) = valid-index xs n<N
 
 mem→idx : {A : Set} {x : A} {xs : List A} → x ∈ xs → Σ (λ n → xs ! n ≡ Just x)
 mem→idx (here refl) = ⟨ Z , refl ⟩
@@ -252,6 +261,14 @@ _⊆_ {A} xs ys = {z : A} → z ∈ xs → z ∈ ys
 ∷-subset {A} {z} xs⊆ys (here eq) = here eq
 ∷-subset {A} {z} xs⊆ys (there mem) = there (xs⊆ys mem)
 
+++-subset-l : {A : Set} {xs ys : List A} → xs ⊆ xs ++ ys
+++-subset-l {xs = []} = λ ()
+++-subset-l {xs = x ∷ xs} = ∷-subset ++-subset-l
+
+++-subset-r : {A : Set} {xs ys : List A} → ys ⊆ xs ++ ys
+++-subset-r {xs = []} = λ y∈ys → y∈ys
+++-subset-r {xs = x ∷ xs} = λ y∈ys → there (++-subset-r y∈ys)
+
 ∘-map : {A B C : Set} (f : A → B) (g : B → C) {xs : List A} → map (λ x → g (f x)) xs ≡ map g ((map f) xs)
 ∘-map f g {[]} = refl
 ∘-map f g {x ∷ xs} = cong ((g (f x)) ∷_) (∘-map f g)
@@ -265,57 +282,67 @@ map-id : {A : Set} {xs : List A} → map (λ x → x) xs ≡ xs
 map-id {xs = []} = refl
 map-id {xs = x ∷ xs} = cong (x ∷_) map-id
 
+zip-map : {A B C : Set} (f : A → B → C) (xs : List A) (ys : List B) → List C
+zip-map f [] ys = []
+zip-map f (x ∷ xs) [] = []
+zip-map f (x ∷ xs) (y ∷ ys) = f x y ∷ zip-map f xs ys
 
-Fin : Nat → Set
-Fin N = Σ λ n → n < N
+zip-map-idx : {A B C : Set} (f : A → B → C) (xs : List A) (ys : List B) (i : Nat)
+            → (zip-map f xs ys ! i) ≡ fmap2 f (xs ! i) (ys ! i)
+zip-map-idx f [] [] _ = refl
+zip-map-idx f [] (x ∷ ys) Z = refl
+zip-map-idx f [] (x ∷ ys) (S i) with ys ! i
+... | Just _ = refl
+... | Nothing = refl
+zip-map-idx f (x ∷ xs) [] Z = refl
+zip-map-idx f (x ∷ xs) [] (S i) with xs ! i
+... | Just _ = refl
+... | Nothing = refl
+zip-map-idx f (x ∷ xs) (y ∷ ys) Z = refl
+zip-map-idx f (x ∷ xs) (y ∷ ys) (S i) = zip-map-idx f xs ys i
+
+reverse : {A : Set} → List A → List A
+reverse [] = []
+reverse (x ∷ xs) = reverse xs ++ [ x ]
+
+split-tail : {A : Set} {n : Nat} (xs : List A) (non-empty : length xs ≡ S n) → (Σ λ z → Σ λ ys → xs ≡ ys ++ [ z ])
+split-tail (x ∷ []) refl = ⟨ x , ⟨ [] , refl ⟩ ⟩
+split-tail (x ∷ y ∷ xs) refl = let ⟨ z , ⟨ ys , eq ⟩ ⟩ = split-tail (y ∷ xs) refl
+                                in ⟨ z , ⟨ x ∷ ys , cong (x ∷_) eq ⟩ ⟩
+
+rev-++ : {A : Set} (xs ys : List A) → reverse (xs ++ ys) ≡ reverse ys ++ reverse xs
+rev-++ [] ys = sym (++-neutral-r (reverse ys))
+rev-++ (x ∷ xs) ys = let IH = rev-++ xs ys
+                         eq1 = cong (_++ [ x ]) IH
+                         eq2 = ++-assoc (reverse ys) (reverse xs) [ x ]
+                      in trans eq1 eq2
+
+rev-inv : {A : Set} (xs : List A) → reverse (reverse xs) ≡ xs
+rev-inv [] = refl
+rev-inv (x ∷ xs) = let IH = rev-inv xs
+                       eq1 = rev-++ (reverse xs) [ x ]
+                       eq2 = cong (x ∷_) IH
+                    in trans eq1 eq2
 
 
+rev-len : {A : Set} (xs : List A) → length (reverse xs) ≡ length xs
+rev-len [] = refl
+rev-len (x ∷ xs) = let IH = rev-len xs
+                       eq1 = ++-length (reverse xs) [ x ]
+                       eq2 = +-suc-shift
+                       eq3 = cong S (+-neutral-r (length (reverse xs)))
+                       eq4 = cong S IH
+                    in trans eq1 (trans eq2 (trans eq3 eq4))
 
 
-mirror : Nat → Nat → Nat
-mirror N i = N - S Z - i
+-- enumerable finite set
+-- isomorphic to {n : Nat | n < N}
+postulate
+    Fin : Nat → Set
+    Fin→Nat : {N : Nat} (n : Fin N) → Σ λ n' → n' < N
+    enumerate : (N : Nat) → List (Fin N)
+    Nat→Fin : {N : Nat} (n : Fin N) → enumerate N ! Σ.fst (Fin→Nat n) ≡ Just n
+    enum-size : (N : Nat) → length (enumerate N) ≡ N
 
-mirror-le : {N i : Nat} → i < N → mirror N i < N
-mirror-le {(S Z)} Z<S = subst (_< S Z) n<Sn refl
-mirror-le {(S (S N))} Z<S = subst (_< S (S N)) n<Sn refl
-mirror-le {(S (S N))} {S i} (S<S i<N) =
-  let n-i<ssn : (N - i) < S (S N)
-      n-i<ssn = minus-monotone {N} {S (S N)} {i} (n<m→n<Sm n<Sn)
-   in n-i<ssn
-
-postulate mirror-involutive : (N i : Nat) → i < N → mirror N (mirror N i) ≡ i
-
-enum-desc : {N : Nat} (n : Nat) → n < N → List (Fin N)
-enum-desc Z Z<S = [ ⟨ Z , Z<S ⟩ ]
-enum-desc (S n) Sn<N = ⟨ S n , Sn<N ⟩ ∷ enum-desc n (Sn<m→n<m Sn<N)
-
-enum-desc-len : {N : Nat} (n : Nat) (n<N : n < N) → length (enum-desc n n<N) ≡ S n
-enum-desc-len Z Z<S = refl
-enum-desc-len (S n) Sn<N = let IH = enum-desc-len n (Sn<m→n<m Sn<N) in cong S IH
-
-enum-desc-idx : {N : Nat}
-              → (n : Nat) → (n<N : n < N)
-              → (i : Nat) → (i≤n : i ≤ n)
-              → ((enum-desc n n<N) ! i) ≡ Just ⟨ n - i , minus-monotone n<N ⟩
-enum-desc-idx Z Z<S Z i≤n = refl
-enum-desc-idx Z Z<S (S i) (S<S ())
-enum-desc-idx (S n) (S<S n<N) Z i≤n = refl
-enum-desc-idx (S n) (S<S n<N) (S i) (S<S i≤n) = let n<ₐN = n<m→n<Sm n<N in enum-desc-idx n n<ₐN i i≤n
-
-enumerate : (N : Nat) → List (Fin N)
-enumerate Z = []
-enumerate N@(S M) = enum-desc M n<Sn
-
-enumerate-index : (N i : Nat) (i<N : i < N) → (enumerate N ! i) ≡ Just ⟨ mirror N i , mirror-le i<N ⟩
-enumerate-index (S Z) Z Z<S = refl
-enumerate-index (S Z) (S i) (S<S ())
-enumerate-index (S (S N)) Z Z<S = refl
-enumerate-index (S (S N)) (S i) (S<S i<N) =
-  let n<SSn : N < S (S N)
-      n<SSn = n<m→n<Sm n<Sn
-      idx : (enum-desc N n<SSn ! i) ≡ Just ⟨ N - i , minus-monotone n<SSn ⟩
-      idx = enum-desc-idx N n<SSn i i<N
-   in idx
-    
-
-postulate enumerate-exhaustive : (N i : Nat) (i<N : i < N) → ⟨ i , i<N ⟩ ∈ enumerate N
+Just-fromJust : {A : Set} (m : Maybe A) (j : IsJust m) → m ≡ Just (fromJust m j)
+Just-fromJust (Just a) j = refl

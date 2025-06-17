@@ -28,6 +28,9 @@ data Ground {N : Nat} : Formula N → Set where
   _⇒_ : {ϕ ψ : Formula N} → Ground ϕ → Ground ψ → Ground (ϕ ⇒ ψ)
   _/\_ : {ϕ ψ : Formula N} → Ground ϕ → Ground ψ → Ground (ϕ /\ ψ)
   _\/_ : {ϕ ψ : Formula N} → Ground ϕ → Ground ψ → Ground (ϕ \/ ψ)
+infixr 50 ~_
+~_ : {N : Nat} → Formula N → Formula N
+~_ = _⇒ ⊥
 
 data GValue {N : Nat} : {ϕ : Formula N} (gϕ : Ground ϕ) (b : Bool) → Set where
   t⊤ : GValue ⊤ True
@@ -76,16 +79,41 @@ GValueDec (ϕ \/ ψ) with GValueDec ϕ | GValueDec ψ
 ... | right fϕ | left  tψ = left (f\/t fϕ tψ)
 ... | right fϕ | right fψ = right (f\/f fϕ fψ)
 
+build-literal : {N : Nat} → Bool → Fin N → Formula N
+build-literal True x = var x
+build-literal False x = ~ (var x)
+
+-- in agda-stdlib (_∷_) has precedence 5
+Context : Nat → Set
+Context N = List (Formula N)
 
 Assignment : Nat → Set
-Assignment N = Fin N → Bool
+Assignment N = Σ λ (a : List Bool) → length a ≡ N
 
+value : {N : Nat} → Assignment N → Fin N → Bool
+value ⟨ values , refl ⟩ x = let ⟨ i , i<N ⟩ = Fin→Nat x
+                             in fromJust (values ! i) (valid-index values i<N)
+
+Assignment→Context : {N : Nat} → Assignment N → Context N
+Assignment→Context {N} ⟨ values , _ ⟩ = zip-map build-literal values (enumerate N)
+
+Assignment-Context-Locate : {N : Nat} (v : Assignment N) (x : Fin N)
+                          → (build-literal (value v x) x) ∈ (Assignment→Context v)
+Assignment-Context-Locate {N} ⟨ values , refl ⟩ x =
+  let ⟨ i , i<N ⟩ = Fin→Nat x
+      vars = enumerate N
+      zip-map-idx-eq = zip-map-idx build-literal values vars i
+      values!i = values ! i
+      just-values!i = valid-index values i<N
+      fmap-build-eq = cong2 (fmap2 build-literal) (Just-fromJust values!i just-values!i) (Nat→Fin x)
+   in idx→mem ⟨ i , trans zip-map-idx-eq fmap-build-eq ⟩
+   
 -- truth value semantics
 data Eval {N : Nat} (v : Assignment N) : (ϕ : Formula N) (b : Bool) → Set where
   t⊤ : Eval v ⊤ True
   f⊥ : Eval v ⊥ False
-  tvar : {x : Fin N} → v x ≡ True  → Eval v (var x) True
-  fvar : {x : Fin N} → v x ≡ False → Eval v (var x) False
+  tvar : {x : Fin N} → value v x ≡ True  → Eval v (var x) True
+  fvar : {x : Fin N} → value v x ≡ False → Eval v (var x) False
   t/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ True  → Eval v (ϕ /\ ψ) True 
   t/\f : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ True  → Eval v ψ False → Eval v (ϕ /\ ψ) False
   f/\t : {ϕ : Formula N} {ψ : Formula N} → Eval v ϕ False → Eval v ψ True  → Eval v (ϕ /\ ψ) False
@@ -118,8 +146,8 @@ Eval-Unique (f=>f f₀ f₁) (t=>f t'₀ f'₁) = Eval-Unique t'₀ f₀
 
 -- compute boolean value
 eval : {N : Nat} (v : Assignment N) (ϕ : Formula N) → Σ (Eval v ϕ)
-eval v (var x) = aux (v x) refl
-  where aux : (b : Bool) → v x ≡ b → Σ (Eval v (var x))
+eval v (var x) = aux (value v x) refl
+  where aux : (b : Bool) → value v x ≡ b → Σ (Eval v (var x))
         aux True  eq = ⟨ True  , tvar eq ⟩
         aux False eq = ⟨ False , fvar eq ⟩
 eval v ⊤ = ⟨ True , t⊤ ⟩
@@ -139,15 +167,6 @@ eval v (ϕ \/ ψ) with eval v ϕ | eval v ψ
 ... | ⟨ True  , tϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ True  , t\/f tϕ fψ ⟩
 ... | ⟨ False , fϕ ⟩ | ⟨ True  , tψ ⟩ = ⟨ True  , f\/t fϕ tψ ⟩
 ... | ⟨ False , fϕ ⟩ | ⟨ False , fψ ⟩ = ⟨ False , f\/f fϕ fψ ⟩
-
-
-infixr 50 ~_
-~_ : {N : Nat} → Formula N → Formula N
-~_ = _⇒ ⊥
-
--- in agda-stdlib (_∷_) has precedence 5
-Context : Nat → Set
-Context N = List (Formula N)
 
 module ND-classical where
   infix 3 _⊢_
@@ -175,8 +194,8 @@ module ND-classical where
     ⊢-case : {Γ : Context N} {γ ϕ ψ : Formula N} → Γ ⊢ ϕ \/ ψ → Γ ⊢ ϕ ⇒ γ → Γ ⊢ ψ ⇒ γ → Γ ⊢ γ
 
   -- law of excluded middle for classical logic
-  ⊢-lem : {N : Nat} {Γ : Context N} {ϕ : Formula N} → Γ ⊢ ϕ \/ (~ ϕ)
-  ⊢-lem {N} {Γ} {ϕ} = ⊢-pbc ~lem⊢
+  ⊢-lem : {N : Nat} {Γ : Context N} (ϕ : Formula N) → Γ ⊢ ϕ \/ (~ ϕ)
+  ⊢-lem {N} {Γ} ϕ = ⊢-pbc ~lem⊢
     where ~lem⊢ : ~ (ϕ \/ (~ ϕ)) ∷ Γ ⊢ ⊥
           ~lem⊢ = let ~[ϕ+ϕ']⊢~[ϕ+ϕ']   = ⊢-ax (here refl)
                       ~[ϕ+ϕ'],ϕ⊢~[ϕ+ϕ'] = ⊢-ax (there (here refl))
@@ -282,21 +301,6 @@ module ND-classical where
   ... | f\/t _ tψ  | _ | f=>t _  tγ = tγ
   ... | f\/t _ tψ  | _ | f=>f fψ _  = absurd (Eval-Unique tψ fψ)
 
-  build-literal : {N : Nat} → Bool → Fin N → Formula N
-  build-literal True x = var x
-  build-literal False x = ~ (var x)
-
-  Assignment→Variables→Context : {N : Nat} → Assignment N → List (Fin N)→ Context N
-  Assignment→Variables→Context v = map (λ x → build-literal (v x) x)
-  
-  Assignment→Context : {N : Nat} → Assignment N → Context N
-  Assignment→Context {N} v = Assignment→Variables→Context v (enumerate N)
-
-  Assignment-Context-Locate : {N : Nat} (v : Assignment N) (x : Fin N)
-                            → (build-literal (v x) x) ∈ (Assignment→Context v)
-  Assignment-Context-Locate {N} v ⟨ i , i<N ⟩ = ∈-map (enumerate-exhaustive N i i<N)
-
-
   Truth-Table-Lemma-True  : {N : Nat} (val : Assignment N) (ϕ : Formula N)
                           → Eval val ϕ True  → (Assignment→Context val) ⊢   ϕ
   Truth-Table-Lemma-False : {N : Nat} (val : Assignment N) (ϕ : Formula N)
@@ -306,7 +310,7 @@ module ND-classical where
   Truth-Table-Lemma-True v (var x) (tvar vx=t) =
     let Γ = Assignment→Context v
         Γ⊢literal = ⊢-ax (Assignment-Context-Locate v x)
-        positive-literal : build-literal (v x) x ≡ build-literal True x
+        positive-literal : build-literal (value v x) x ≡ build-literal True x
         positive-literal = cong (λ v → build-literal v x) vx=t
      in subst (Γ ⊢_) Γ⊢literal positive-literal
   Truth-Table-Lemma-True val ⊤ t⊤ = ⊢-true
@@ -342,7 +346,7 @@ module ND-classical where
   Truth-Table-Lemma-False v (var x) (fvar vx=f) =
     let Γ = Assignment→Context v
         Γ⊢literal = ⊢-ax (Assignment-Context-Locate v x)
-        negative-literal : build-literal (v x) x ≡ build-literal False x
+        negative-literal : build-literal (value v x) x ≡ build-literal False x
         negative-literal = cong (λ v → build-literal v x) vx=f
      in subst (Γ ⊢_) Γ⊢literal negative-literal
   Truth-Table-Lemma-False val ⊥ f⊥ = ⊢-intr (⊢-ax (here refl))
@@ -381,91 +385,58 @@ module ND-classical where
         Γ,ϕ+ψ⊢   = ⊢-case (⊢-ax (here refl)) Γ,ϕ+ψ⊢~ϕ Γ,ϕ+ψ⊢~ψ
      in ⊢-intr Γ,ϕ+ψ⊢
 
-  build-assignment : {N : Nat} (picked : List Bool) → length picked ≡ N → Assignment N
-  build-assignment {N} picked refl ⟨ i , i<N ⟩ = let j   = mirror N i
-                                                     j<N = mirror-le i<N
-                                                  in fromJust (picked ! j) (valid-index j<N)
-
-  build-context : {N : Nat} (m : Nat) (picked :  List Bool) → m ≤ N → length picked ≡ m → Context N
-  build-context Z _ _ _ = []
-  build-context (S x) (b ∷ picked) (S<S m<N) refl =
-    let ctx = build-context x picked (n<m→n≤m m<N) refl
-        lit = build-literal b ⟨ x , m<N ⟩
-     in lit ∷ ctx
-
-  build-context-deterministic : {N : Nat} {m : Nat} {picked :  List Bool}
-                              → (le1 le2 : m ≤ N)
-                              → {eq1 eq2 : length picked ≡ m}
-                              → build-context m picked le1 eq1
-                              ≡ build-context m picked le2 eq2
-  build-context-deterministic {N} {m} {picked} le1 le2 {refl} {refl} =
-    cong (λ le → build-context m picked le refl) (<-unique le1 le2)
-
-
-  test : Nat → Set
-  test N = (picked : List Bool) → (l=N : length picked ≡ N)
-         → Assignment→Context (build-assignment picked l=N) ≡ build-context N picked n≤n l=N
-  t3 : test (S (S (S Z)))
-  t4 : test (S (S (S (S Z))))
-  t3 (x ∷ y ∷ z ∷ []) refl = refl
-  t4 (x ∷ y ∷ z ∷ w ∷ []) refl = refl
-
-  -- TODO: prove this key lemma later
-  postulate
-    build-context-equal : {N : Nat} (picked : List Bool) (l=N : length picked ≡ N)
-                        → Assignment→Context (build-assignment picked l=N) ≡ build-context N picked n≤n l=N
+  build-context : {N : Nat} (picked :  List Bool) → Context N
+  build-context {N} picked = zip-map build-literal picked (enumerate N)
 
   -- completeness for semantically valid formula under the empty context
   complete' : {N : Nat} (ϕ : Formula N) → [] ⊨ ϕ → [] ⊢ ϕ
-  complete' {N} ϕ ⊨ϕ = solve N Z [] +-neutral-r refl Z<S
+  complete' {N} ϕ ⊨ϕ = solve N Z rev-vars [] []
+                             rev-vars-len
+                             refl
+                             refl
+                             (+-neutral-r N)
+                             (trans (++-neutral-r rev-rev-vars) (rev-inv vars))
     where
       Γ⊨ϕ : {Γ : Context N} → Γ ⊨ ϕ
       Γ⊨ϕ v _ = ⊨ϕ v []
+
+      vars = enumerate N
+      rev-vars = reverse vars
+      rev-rev-vars = reverse rev-vars
+      rev-vars-len = trans (rev-len vars) (enum-size N)
 
       Assignment→Proof : (v : Assignment N) → (Assignment→Context v) ⊢ ϕ
       Assignment→Proof v = Truth-Table-Lemma-True v ϕ (Γ⊨ϕ v [])
 
       solve : (n m : Nat)
-            → (picked : List Bool)
-            → (inv1 : (n + m) ≡ N)
-            → (inv2 : length picked ≡ m)
-            → (inv3 : m ≤ N)
-            → build-context m picked inv3 inv2 ⊢ ϕ
-      solve Z m picked refl refl inv3 =
-        let Γ = build-context N picked inv3 refl
-            Γ' = build-context N picked n≤n refl
-
-            assign : Assignment N
-            assign = build-assignment picked refl
-
-            Γ'' = Assignment→Context assign
-            Γ''⊢ϕ = Assignment→Proof assign
-
-            Γ''=Γ' : Γ'' ≡ Γ'
-            Γ''=Γ' = build-context-equal {N} picked refl
-
-            Γ'=Γ : build-context N picked n≤n refl
-                 ≡ build-context N picked inv3 refl
-            Γ'=Γ = build-context-deterministic n≤n inv3
-
-         in subst (_⊢ ϕ) Γ''⊢ϕ (trans Γ''=Γ' Γ'=Γ)
-      solve (S n) m picked refl refl inv3 =
-        let Γ = build-context m picked inv3 refl
-            x = var ⟨ m , add-monotone ⟩
-            inv1' = +-suc-shift
-            inv2' = refl
-            inv3' = S<S add-monotone
-
-            Γ,x⊢ϕ  = solve n (S m) (True  ∷ picked) inv1' inv2' inv3'
-            Γ,x'⊢ϕ = solve n (S m) (False ∷ picked) inv1' inv2' inv3'
-
-            eq = build-context-deterministic (n<m→n≤m add-monotone) inv3
-
-            Γ,x⊢ϕ₀  = subst (_⊢ ϕ) Γ,x⊢ϕ  (cong (  x ∷_) eq)
-            Γ,x'⊢ϕ₀ = subst (_⊢ ϕ) Γ,x'⊢ϕ (cong (~ x ∷_) eq)
-         in ⊢-case (⊢-lem {N} {Γ} {x})
-                   (⊢-intr Γ,x⊢ϕ₀)
-                   (⊢-intr Γ,x'⊢ϕ₀)
+            → (vars0 : List (Fin N)) -- unpicked
+            → (vars1 : List (Fin N)) -- picked
+            → (vals  : List Bool)    -- values for picked vars
+            → (inv0 : length vars0 ≡ n)
+            → (inv1 : length vars1 ≡ m)
+            → (inv2 : length vals  ≡ m)
+            → (inv3 : n + m ≡ N)
+            → (inv4 : reverse vars0 ++ vars1 ≡ enumerate N)
+            → zip-map build-literal vals vars1 ⊢ ϕ
+      solve Z     m [] vars1 vals
+            refl refl inv2 inv3 inv4 =
+        let assignment : Assignment N
+            assignment = ⟨ vals , trans inv2 inv3 ⟩
+            proof = Assignment→Proof assignment
+            ctx-eq : zip-map build-literal vals (enumerate N)
+                   ≡ zip-map build-literal vals vars1
+            ctx-eq = cong (zip-map build-literal vals) (sym inv4)
+         in subst (_⊢ ϕ) proof ctx-eq
+      solve (S n) m (x ∷ vars0) vars1 vals
+            refl refl inv2 inv3 inv4 =
+        let inv2' = cong S inv2
+            inv3' = trans +-suc-shift inv3
+            vars-appx-eq = ++-assoc (reverse vars0) [ x ] vars1
+            inv4' = trans (sym (vars-appx-eq)) inv4
+            Γ,x⁺⊢ϕ = solve n (S m) vars0 (x ∷ vars1) (True  ∷ vals) refl refl inv2' inv3' inv4'
+            Γ,x⁻⊢ϕ = solve n (S m) vars0 (x ∷ vars1) (False ∷ vals) refl refl inv2' inv3' inv4'
+            Γ⊢x⁺\/x⁻ = ⊢-lem (var x)
+         in ⊢-case Γ⊢x⁺\/x⁻ (⊢-intr Γ,x⁺⊢ϕ) (⊢-intr Γ,x⁻⊢ϕ)
 
   -- every semantical entailment is derivable
   complete : {N : Nat} {Γ : Context N} {ϕ : Formula N} → Γ ⊨ ϕ → Γ ⊢ ϕ
