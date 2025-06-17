@@ -29,7 +29,7 @@ My solution to the MPRI Proof assistants (PRFA 2-7-2) course project, but in Agd
     - proving the consistency of proof systems
 3. **DONE** conjunctions and product types
 4. **WIP** disjunctions and sum types
-5. **TODO** soundness, completeness, and decidability of classical logic natural deduction with respect to boolean semantics.
+5. **DONE** soundness, completeness, and decidability of classical logic natural deduction with respect to boolean semantics.
 6. **TODO** simply typed lambda calculus as proof terms for the minimal logic
 7. **TODO** decidability of simply typed lambda calculus type checking
 8. **TODO** simulate simply typed lambda calculus with typed combinatory logic
